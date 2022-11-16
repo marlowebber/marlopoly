@@ -1,0 +1,15 @@
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/Marlopoly
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/Marlopoly.deps.json
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/Marlopoly.runtimeconfig.json
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/Marlopoly.dll
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/ref/Marlopoly.dll
+/home/marlo/Documents/Marlopoly/bin/Debug/net6.0/Marlopoly.pdb
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.csproj.AssemblyReference.cache
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.GeneratedMSBuildEditorConfig.editorconfig
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.AssemblyInfoInputs.cache
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.AssemblyInfo.cs
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.csproj.CoreCompileInputs.cache
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.dll
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/ref/Marlopoly.dll
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.pdb
+/home/marlo/Documents/Marlopoly/obj/Debug/net6.0/Marlopoly.genruntimeconfig.cache
