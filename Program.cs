@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Numerics;
-
+using System;
 
 
 
@@ -10,9 +10,10 @@ class Person
 
  public   Dictionary<int, float> owns        = new Dictionary<int, float>(); 
  public   Dictionary<int, float> likes       = new Dictionary<int, float>(); 
- public   Dictionary<int, float> knows       = new Dictionary<int, float>(); 
+ public   Dictionary<int, int> sources       = new Dictionary<int, int>(); 
  public   Dictionary<int, float> values      = new Dictionary<int, float>(); 
- public   Dictionary<int, float> needs       = new Dictionary<int, float>(); 
+ public   Dictionary<int, float> needs_quantities       = new Dictionary<int, float>(); 
+ public   Dictionary<int, float> needs_priorities       = new Dictionary<int, float>(); 
  public   Dictionary<int, float> personality = new Dictionary<int, float>(); 
  
  public   Dictionary<int, float> ideals      = new Dictionary<int, float>(); 
@@ -31,6 +32,15 @@ public const float eats_per_turn = 0.01f;
 public const float drinks_per_turn = 0.01f;
 public const float smokes_per_turn = 0.01f;
 
+    public Person(string name, ref Random r)
+    {
+        this.name = name;
+        this.hungry = (float)r.NextDouble();
+        this.thirsty = (float)r.NextDouble();
+        this.hedgy = (float)r.NextDouble();
+    }
+
+
     public void bodily_functions()
     {
         this.hungry = Utilities.clamp( this.hungry + eats_per_turn, 0.0f, 2.0f );
@@ -41,27 +51,36 @@ public const float smokes_per_turn = 0.01f;
     public void compile_needs()
     {
         // rebuild the list of needs from various agreements and bodily needs.
-        this.needs.Clear();
+        this.needs_quantities.Clear();
+        this.needs_priorities.Clear();
 
-        foreach (Dictionary<int, float> debt in this.agreements.Values)
+        foreach (int debtor in this.agreements.Keys)
         {
+            Dictionary<int, float> debt = this.agreements[debtor];
             foreach (int resource in debt.Keys)
             {
-                this.needs[resource] += debt[resource];
+                this.needs_quantities[resource] += debt[resource];
+                this.needs_priorities[resource] += this.likes[debtor];
             }
         }
 
         if (this.hungry > 1.0f)
         {
-            this.needs[ (int)Content.Items.Chips ] += (int)this.hungry;
+
+            this.needs_quantities[ (int)Content.Items.Chips ]  = 1.0f;
+            this.needs_priorities[ (int)Content.Items.Chips ] += (int)this.hungry;
         }
         if (this.thirsty > 1.0f)
         {
-            this.needs[ (int)Content.Items.Beer ] += (int)this.thirsty;
+
+            this.needs_quantities[ (int)Content.Items.Beer ]  = 1.0f;
+            this.needs_priorities[ (int)Content.Items.Beer ] += (int)this.thirsty;
         }
         if (this.hedgy > 1.0f)
         {
-            this.needs[ (int)Content.Items.Smokes ] += (int)this.hedgy;
+
+            this.needs_quantities[ (int)Content.Items.Smokes ]  = 1.0f;
+            this.needs_priorities[ (int)Content.Items.Smokes ] += (int)this.hedgy;
         }
 
 
@@ -69,16 +88,8 @@ public const float smokes_per_turn = 0.01f;
 
 
 
-   
-    public void gossip_with(ref Person partner)
-    {
 
-    }
-
-    public void update_position_based_on_needs()
-    {
-
-    }
+  
 }
 
 
@@ -91,15 +102,14 @@ class World
 
     List<Person> people = new List<Person>();
 
-    public void setup()
+    public void setup(ref Random r)
     {
+        this.people.Clear();
         for (int i = 0; i < population_size; i++)
         {
-            people.Append(new Person());
+            this.people.Append(new Person(Content.person_names[i], ref r));
         }
     }
-
-
 
     public void trade(int a, int b, int b_gives, float b_gives_amount )
     {
@@ -114,6 +124,16 @@ class World
         else if ((b_gives_amount < 0.0f) && (b_gives_amount < this.people[a].owns[b_gives])) 
         {
             b_gives_amount = this.people[a].owns[b_gives];
+        }
+
+
+        if (b_gives_amount == 0)
+        {
+            // if b doesn't have the thing, and b was a's source, refer a to b's source.
+            if (this.people[a].sources[b_gives] == b && this.people[b].sources[b_gives]!= a )
+            {
+                this.people[a].sources[b_gives] = this.people[b].sources[b_gives];
+            }
         }
 
         // calculate how much each party thinks the offer is worth.
@@ -204,6 +224,55 @@ class World
     }
 
 
+      public void update_position_based_on_needs(int a, int greatest_need)
+    {
+        Vector2 destination = this.people[a].position;
+        bool go = false;
+
+
+        if (greatest_need != -1)
+        {
+            int source = this.people[a].sources[greatest_need];
+            if (source != -1)
+            {
+                go = true;
+                destination = this.people[source].position;
+            }
+            
+        }
+
+        if (go)
+        {
+            float angle = (float)Math.Atan2(destination.Y - this.people[a].position.Y,destination.X - this.people[a].position.X );
+
+            const float speed = 1.0f;
+
+            float x_move = (float)Math.Cos(angle) * speed;
+            float y_move = (float)Math.Sin(angle) * speed;
+
+            if (destination.X - this.people[a].position.X < x_move)
+            {
+                this.people[a].position.X = destination.X;
+            }
+            else
+            {
+                this.people[a].position.X += x_move;
+            }
+
+            if (destination.Y - this.people[a].position.Y < y_move)
+            {
+                this.people[a].position.Y = destination.Y;
+            }
+            else
+            {
+                this.people[a].position.Y += y_move;
+            }
+
+        }
+
+    }
+
+
 
     public void update(ref Random r)
     {
@@ -215,11 +284,31 @@ class World
                 {
                     if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
                     {
+
+                        this.people[a].compile_needs();  
+
+                        this.gossip(a, b, ref r);
+
                         // choose something out of a's list of needs to trade for.
-                    }
-                    this.people[a].compile_needs();
-                    this.people[a].bodily_functions();   
-                    this.people[a].update_position_based_on_needs();
+                        int greatest_need = -1;
+                        float greated_need_priority = 0.0f;
+                        foreach (int need in this.people[a].needs_priorities.Keys)
+                        {
+                            if (this.people[a].needs_priorities[need] > greated_need_priority)
+                            {
+                                greated_need_priority = Utilities.abs( this.people[a].needs_priorities[need] );
+                                greatest_need = need;
+                            }
+                        }
+                        
+                        if (greatest_need != -1)
+                        {
+                            this.trade(a, b, greatest_need, this.people[a].needs_quantities[greatest_need]);
+                            this.update_position_based_on_needs(a, greatest_need);
+                        }
+
+                        this.people[a].bodily_functions();
+                    } 
                 }
             }
         }
@@ -261,6 +350,7 @@ class Game
 
     private void run()
     {
+        this.world.setup(ref this.random);
         for (int i = 0; i < 1000; i++)
         {
             this.world.update(ref this.random);

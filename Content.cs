@@ -30,8 +30,8 @@ public const int n_items = 8;
 
 
 
-List<string> person_names = new List<string>(new string[]  {
-
+public static readonly List<string> person_names = new List<string> ( new[]
+{
 	"Brandon",
 	"Kyle",
 	"Keelan",
@@ -128,17 +128,17 @@ List<string> person_names = new List<string>(new string[]  {
 
 
 
-Dictionary<int,Dictionary<int,float>> recipes = new Dictionary<int,Dictionary<int,float>>();
+static readonly Dictionary<int,Dictionary<int,float>> recipes = new Dictionary<int,Dictionary<int,float>>();
 
 
-Dictionary<int,float> recipe_smokes = new Dictionary<int,float> 
-{
-    [(int)Items.Spin] = 1.0f,
-    [(int)Items.Papers] = 1.0f,
-    [(int)Items.Filters] = 1.0f,
-};
+// Dictionary<int,float> recipe_smokes = new Dictionary<int,float> 
+// {
+//     [(int)Items.Spin] = 1.0f,
+//     [(int)Items.Papers] = 1.0f,
+//     [(int)Items.Filters] = 1.0f,
+// };
 
-recipes.Add( (int)Items.Smokes, recipe_smokes);
+// recipes.Add( (int)Items.Smokes, recipe_smokes);
 
 
 
