@@ -2,16 +2,16 @@
 
 static class Content
 {
-
-enum Characteristics 
+public enum Characteristics 
 {
   Cute,
   Funny,
   Smart,
   Tough,
   Cool,
-}
+};
 
+public const int n_characteristics = 5;
 
 public enum Items 
 {
@@ -25,6 +25,8 @@ Cash,
   Lighter,
 }
 
+
+public const int n_items = 8;
 
 
 

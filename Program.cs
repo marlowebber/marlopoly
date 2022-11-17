@@ -178,6 +178,31 @@ class World
 
 
 
+    public void gossip(int a, int b, ref Random r)
+    {
+        const float const_gossip = 0.25f;
+
+        // 1. small talk.
+        // a says something that falls somewhere on their scale of personality characteristic.
+        // b has a reputation adjustment based on the difference between their ideals and what a said.
+        int topic = r.Next(0,Content.n_characteristics);
+        this.people[b].likes[a] += (1.0f - ((this.people[a].personality[topic] - this.people[b].ideals[topic]) / Content.n_characteristics )) * const_gossip ;
+
+        // 2. talk about a person
+        // https://stackoverflow.com/questions/10685142/c-sharp-dictionaries-intersect
+        Dictionary<int, float> mutual_friends =  
+        this.people[a].likes.Where(x => this.people[b].likes.ContainsKey(x.Key))
+                .ToDictionary(x => x.Key, x => x.Value + this.people[b].likes[x.Key]);
+
+        int c = r.Next(0, mutual_friends.Count() );
+
+        this.people[a].likes[b] += this.people[b].likes[c] * this.people[a].likes[c] * const_gossip;
+        this.people[b].likes[a] += this.people[a].likes[c] * this.people[b].likes[c] * const_gossip;
+
+        this.people[a].likes[c] += this.people[b].likes[c] * this.people[a].likes[b] * const_gossip;
+        this.people[b].likes[c] += this.people[a].likes[c] * this.people[b].likes[a] * const_gossip;
+    }
+
 
 
     public void update(ref Random r)
