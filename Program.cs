@@ -5,23 +5,38 @@ using System;
 
 
 
-class Person
+class EconomicEntity
 {
 
- public   Dictionary<int, float> owns        = new Dictionary<int, float>(); 
- public   Dictionary<int, float> likes       = new Dictionary<int, float>(); 
- public   Dictionary<int, int> sources       = new Dictionary<int, int>(); 
- public   Dictionary<int, float> values      = new Dictionary<int, float>(); 
- public   Dictionary<int, float> needs_quantities       = new Dictionary<int, float>(); 
- public   Dictionary<int, float> needs_priorities       = new Dictionary<int, float>(); 
+    public   Dictionary<int, float> owns        = new Dictionary<int, float>(); 
+    public   Dictionary<int, int> sources       = new Dictionary<int, int>(); 
+    public   Dictionary<int, float> values      = new Dictionary<int, float>(); 
+
+    public   Dictionary<int, float> likes       = new Dictionary<int, float>(); 
+    public   Dictionary<int, float> needs_quantities       = new Dictionary<int, float>(); 
+    public   Dictionary<int, float> needs_priorities       = new Dictionary<int, float>(); 
+
+    public   Dictionary<int, Dictionary<int, float> > agreements = new Dictionary<int, Dictionary<int, float> >(); 
+    public   bool traded_this_turn;
+    public   Vector2 position;
+    public   string name = new string("");
+
+    public EconomicEntity(string name)
+    {
+        this.name = name;
+    }
+
+}
+
+
+class Person : EconomicEntity
+{
+
  public   Dictionary<int, float> personality = new Dictionary<int, float>(); 
  
  public   Dictionary<int, float> ideals      = new Dictionary<int, float>(); 
- public   Dictionary<int, Dictionary<int, float> > agreements = new Dictionary<int, Dictionary<int, float> >(); 
- public   Vector2 position;
- public   bool traded_this_turn;
  public   bool chatted_this_turn;
- public   string name = new string("");
+
 
 
 public float hungry = 0.0f;
@@ -32,9 +47,8 @@ public const float eats_per_turn = 0.01f;
 public const float drinks_per_turn = 0.01f;
 public const float smokes_per_turn = 0.01f;
 
-    public Person(string name, ref Random r)
+    public Person(string name, ref Random r) : base(name)
     {
-        this.name = name;
         this.hungry = (float)r.NextDouble();
         this.thirsty = (float)r.NextDouble();
         this.hedgy = (float)r.NextDouble();
@@ -332,7 +346,7 @@ class Game
 
 
 
-    private void detect_OS()
+    public void detect_OS()
     {
         // https://ubuntu.com/blog/creating-cross-platform-applications-with-net-on-ubuntu-on-wsl
         Console.WriteLine("Marlopoly version 0.0");
@@ -348,7 +362,7 @@ class Game
         Console.WriteLine("Version {0}", Environment.OSVersion.Version);
     }
 
-    private void run()
+    public void run()
     {
         this.world.setup(ref this.random);
         for (int i = 0; i < 1000; i++)
@@ -359,13 +373,20 @@ class Game
 
 
 
-    public void Main()
-    {
-        this.detect_OS();
-    }
-
+ 
     
 }
 
 
+class Marlopoly
+{
 
+       static  public void Main(string[] args)
+    {
+        Game game = new Game();
+        game.detect_OS();
+        game.run();
+    }
+
+
+}

@@ -1,15 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "9yW/o/CvDHEodmHpPU9BmS3y4lDXf7vNedgtigXEUfo9ODgaUUk3YRukYSCFYFRJuOR4rXwHABLAoN6X0RzRzg==",
+  "dgSpecHash": "Q2oKVnokp6g4IBCHjegxbEgf7prJdFsv22IC0NXnO9Wouvat1aYvId5CVqTkCw2JgOkxYI2TmW/aaMqE3F0qBg==",
   "success": true,
-  "projectFilePath": "/home/marlo/Documents/Marlopoly/Marlopoly.csproj",
+  "projectFilePath": "/home/marlo/Documents/marlopoly/Marlopoly.csproj",
   "expectedPackageFiles": [
-    "/home/marlo/.nuget/packages/microsoft.netcore.app.runtime.linux-x64/6.0.10/microsoft.netcore.app.runtime.linux-x64.6.0.10.nupkg.sha512",
     "/home/marlo/.nuget/packages/microsoft.netcore.app.runtime.win-x64/6.0.10/microsoft.netcore.app.runtime.win-x64.6.0.10.nupkg.sha512",
-    "/home/marlo/.nuget/packages/microsoft.aspnetcore.app.runtime.linux-x64/6.0.10/microsoft.aspnetcore.app.runtime.linux-x64.6.0.10.nupkg.sha512",
+    "/home/marlo/.nuget/packages/microsoft.netcore.app.runtime.linux-x64/6.0.10/microsoft.netcore.app.runtime.linux-x64.6.0.10.nupkg.sha512",
     "/home/marlo/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/6.0.10/microsoft.aspnetcore.app.runtime.win-x64.6.0.10.nupkg.sha512",
-    "/home/marlo/.nuget/packages/microsoft.netcore.app.host.linux-x64/6.0.10/microsoft.netcore.app.host.linux-x64.6.0.10.nupkg.sha512",
-    "/home/marlo/.nuget/packages/microsoft.netcore.app.host.win-x64/6.0.10/microsoft.netcore.app.host.win-x64.6.0.10.nupkg.sha512"
+    "/home/marlo/.nuget/packages/microsoft.aspnetcore.app.runtime.linux-x64/6.0.10/microsoft.aspnetcore.app.runtime.linux-x64.6.0.10.nupkg.sha512",
+    "/home/marlo/.nuget/packages/microsoft.netcore.app.host.win-x64/6.0.10/microsoft.netcore.app.host.win-x64.6.0.10.nupkg.sha512",
+    "/home/marlo/.nuget/packages/microsoft.netcore.app.host.linux-x64/6.0.10/microsoft.netcore.app.host.linux-x64.6.0.10.nupkg.sha512"
   ],
   "logs": []
 }

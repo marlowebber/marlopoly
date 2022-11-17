@@ -15,11 +15,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/marlo/Documents/Marlopoly/Marlopoly.csproj",
+      "projectUniqueName": "/home/marlo/Documents/marlopoly/Marlopoly.csproj",
       "projectName": "Marlopoly",
-      "projectPath": "/home/marlo/Documents/Marlopoly/Marlopoly.csproj",
+      "projectPath": "/home/marlo/Documents/marlopoly/Marlopoly.csproj",
       "packagesPath": "/home/marlo/.nuget/packages/",
-      "outputPath": "/home/marlo/Documents/Marlopoly/obj/",
+      "outputPath": "/home/marlo/Documents/marlopoly/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/marlo/.nuget/NuGet/NuGet.Config"
