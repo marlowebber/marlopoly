@@ -5,38 +5,23 @@ using System;
 
 
 
-class EconomicEntity
+class Person
 {
 
-    public   Dictionary<int, float> owns        = new Dictionary<int, float>(); 
-    public   Dictionary<int, int> sources       = new Dictionary<int, int>(); 
-    public   Dictionary<int, float> values      = new Dictionary<int, float>(); 
-
-    public   Dictionary<int, float> likes       = new Dictionary<int, float>(); 
-    public   Dictionary<int, float> needs_quantities       = new Dictionary<int, float>(); 
-    public   Dictionary<int, float> needs_priorities       = new Dictionary<int, float>(); 
-
-    public   Dictionary<int, Dictionary<int, float> > agreements = new Dictionary<int, Dictionary<int, float> >(); 
-    public   bool traded_this_turn;
-    public   Vector2 position;
-    public   string name = new string("");
-
-    public EconomicEntity(string name)
-    {
-        this.name = name;
-    }
-
-}
-
-
-class Person : EconomicEntity
-{
-
+ public   Dictionary<int, float> owns        = new Dictionary<int, float>(); 
+ public   Dictionary<int, float> likes       = new Dictionary<int, float>(); 
+ public   Dictionary<int, int> sources       = new Dictionary<int, int>(); 
+ public   Dictionary<int, float> values      = new Dictionary<int, float>(); 
+ public   Dictionary<int, float> needs_quantities       = new Dictionary<int, float>(); 
+ public   Dictionary<int, float> needs_priorities       = new Dictionary<int, float>(); 
  public   Dictionary<int, float> personality = new Dictionary<int, float>(); 
  
  public   Dictionary<int, float> ideals      = new Dictionary<int, float>(); 
+ public   Dictionary<int, Dictionary<int, float> > agreements = new Dictionary<int, Dictionary<int, float> >(); 
+ public   Vector2 position;
+ public   bool traded_this_turn;
  public   bool chatted_this_turn;
-
+ public   string name = new string("");
 
 
 public float hungry = 0.0f;
@@ -47,11 +32,20 @@ public const float eats_per_turn = 0.01f;
 public const float drinks_per_turn = 0.01f;
 public const float smokes_per_turn = 0.01f;
 
-    public Person(string name, ref Random r) : base(name)
+bool is_location = false;
+
+    public Person(string name, ref Random r)
     {
+        this.name = name;
         this.hungry = (float)r.NextDouble();
         this.thirsty = (float)r.NextDouble();
         this.hedgy = (float)r.NextDouble();
+
+        for (int i = 0; i < Content.n_characteristics; i++)
+        {
+            this.personality.Add(i, (float)r.NextDouble());
+            this.ideals.Add(i, (float)r.NextDouble());
+        }
     }
 
 
@@ -60,6 +54,20 @@ public const float smokes_per_turn = 0.01f;
         this.hungry = Utilities.clamp( this.hungry + eats_per_turn, 0.0f, 2.0f );
         this.thirsty = Utilities.clamp( this.thirsty + drinks_per_turn, 0.0f, 2.0f );
         this.hedgy = Utilities.clamp( this.hedgy + smokes_per_turn, 0.0f, 2.0f );
+    }
+
+    public void add_need(int need, float amount, float priority)
+    {
+        if (! this.needs_quantities.ContainsKey(need))
+        {
+            this.needs_quantities.Add(need, 0.0f);
+        }
+        if (! this.needs_priorities.ContainsKey(need))
+        {
+            this.needs_priorities.Add(need, 0.0f);
+        }
+        this.needs_quantities[ need ] += amount;
+        this.needs_priorities[ need ] += priority;
     }
 
     public void compile_needs()
@@ -73,28 +81,21 @@ public const float smokes_per_turn = 0.01f;
             Dictionary<int, float> debt = this.agreements[debtor];
             foreach (int resource in debt.Keys)
             {
-                this.needs_quantities[resource] += debt[resource];
-                this.needs_priorities[resource] += this.likes[debtor];
+                this.add_need(resource ,  debt[resource] , this.likes[debtor] );
             }
         }
 
         if (this.hungry > 1.0f)
         {
-
-            this.needs_quantities[ (int)Content.Items.Chips ]  = 1.0f;
-            this.needs_priorities[ (int)Content.Items.Chips ] += (int)this.hungry;
+            this.add_need((int)Content.Items.Chips , 1.0f,(int)this.hungry );
         }
         if (this.thirsty > 1.0f)
         {
-
-            this.needs_quantities[ (int)Content.Items.Beer ]  = 1.0f;
-            this.needs_priorities[ (int)Content.Items.Beer ] += (int)this.thirsty;
+            this.add_need((int)Content.Items.Beer  , 1.0f,(int)this.hungry );
         }
         if (this.hedgy > 1.0f)
         {
-
-            this.needs_quantities[ (int)Content.Items.Smokes ]  = 1.0f;
-            this.needs_priorities[ (int)Content.Items.Smokes ] += (int)this.hedgy;
+            this.add_need((int)Content.Items.Smokes  , 1.0f,(int)this.hungry );
         }
 
 
@@ -112,17 +113,21 @@ class World
 {
     int time = 0;
 
-    int population_size = 100;
+    int population_size = 0;
 
     List<Person> people = new List<Person>();
 
     public void setup(ref Random r)
     {
         this.people.Clear();
-        for (int i = 0; i < population_size; i++)
+        this.population_size = 0;
+        foreach (string name in Content.person_names)
         {
-            this.people.Append(new Person(Content.person_names[i], ref r));
+            // Console.WriteLine(name);
+            this.people.Add(new Person(name, ref r));
+            this.population_size++;
         }
+        int memow= 88;
     }
 
     public void trade(int a, int b, int b_gives, float b_gives_amount )
@@ -228,13 +233,29 @@ class World
         this.people[a].likes.Where(x => this.people[b].likes.ContainsKey(x.Key))
                 .ToDictionary(x => x.Key, x => x.Value + this.people[b].likes[x.Key]);
 
-        int c = r.Next(0, mutual_friends.Count() );
+        // c should be a randomly chosen mutual friend.
+        int ci = r.Next(0, mutual_friends.Count() );
+        int i = 0;
+        int c = -1;
+        foreach (int friend in mutual_friends.Keys)
+        {
+            if (i == ci)
+            {
+                c = friend;
+                break;
+            }
+            i++;
+        }
 
-        this.people[a].likes[b] += this.people[b].likes[c] * this.people[a].likes[c] * const_gossip;
-        this.people[b].likes[a] += this.people[a].likes[c] * this.people[b].likes[c] * const_gossip;
+        if (c != -1)
+        {
+            this.people[a].likes[b] += this.people[b].likes[c] * this.people[a].likes[c] * const_gossip;
+            this.people[b].likes[a] += this.people[a].likes[c] * this.people[b].likes[c] * const_gossip;
 
-        this.people[a].likes[c] += this.people[b].likes[c] * this.people[a].likes[b] * const_gossip;
-        this.people[b].likes[c] += this.people[a].likes[c] * this.people[b].likes[a] * const_gossip;
+            this.people[a].likes[c] += this.people[b].likes[c] * this.people[a].likes[b] * const_gossip;
+            this.people[b].likes[c] += this.people[a].likes[c] * this.people[b].likes[a] * const_gossip;
+        }
+
     }
 
 
@@ -290,14 +311,24 @@ class World
 
     public void update(ref Random r)
     {
-        for (int a = 0; a < population_size; a++  ) 
+        for (int a = 0; a < this.population_size; a++  ) 
         {
-            for (int b = 0; b < population_size; b++  ) 
+            for (int b = 0; b < this.population_size; b++  ) 
             {
                 if (a != b)
                 {
                     if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
                     {
+
+                        // if the two don't know each other, well they do now! Add them to each other's dictionaries.
+                        if (! this.people[a].likes.ContainsKey(b))
+                        {
+                            this.people[a].likes.Add(b, 0.0f);
+                        }
+                        if (! this.people[b].likes.ContainsKey(a))
+                        {
+                            this.people[b].likes.Add(a, 0.0f);
+                        }
 
                         this.people[a].compile_needs();  
 

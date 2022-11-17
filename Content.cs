@@ -155,7 +155,8 @@ public static readonly List<string> person_names = new List<string> ( new[]
 	"Jasmine",
 	"Meg",
 	"Cat",
-	"Swamp Beast",
+	"Swamp Monster",
+	"Pastaforelli",
 });
 
 
