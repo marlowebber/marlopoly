@@ -133,26 +133,54 @@ class World
     public void trade(int a, int b, int b_gives, float b_gives_amount )
     {
 
+        bool b_can_deal = true;
 
-
-        // scale the amount to the quantity that the giving party has.
-        if ((b_gives_amount > 0.0f) && (b_gives_amount > this.people[b].owns[b_gives]))
+        if (this.people[b].owns.ContainsKey(b_gives))
         {
-            b_gives_amount = this.people[b].owns[b_gives];
+            // scale the amount to the quantity that the giving party has.
+            if ((b_gives_amount > 0.0f) && (b_gives_amount > this.people[b].owns[b_gives]))
+            {
+                b_gives_amount = this.people[b].owns[b_gives];
+            }
+            else if ((b_gives_amount < 0.0f) && (b_gives_amount < this.people[a].owns[b_gives])) 
+            {
+                b_gives_amount = this.people[a].owns[b_gives];
+            }
         }
-        else if ((b_gives_amount < 0.0f) && (b_gives_amount < this.people[a].owns[b_gives])) 
+        else
         {
-            b_gives_amount = this.people[a].owns[b_gives];
+            b_can_deal = false;
         }
 
+        if (b_gives_amount == 0.0f) { b_can_deal = false; }
 
-        if (b_gives_amount == 0)
+
+        if (!b_can_deal)
         {
             // if b doesn't have the thing, and b was a's source, refer a to b's source.
-            if (this.people[a].sources[b_gives] == b && this.people[b].sources[b_gives]!= a )
+            bool a_has_source = this.people[a].sources.ContainsKey(b_gives);
+            bool b_has_source = this.people[b].sources.ContainsKey(b_gives);
+
+            if (!a_has_source && b_has_source) 
             {
-                this.people[a].sources[b_gives] = this.people[b].sources[b_gives];
+                this.people[a].sources.Add(b_gives, this.people[b].sources[b_gives]);
+            }            
+            else if (a_has_source && b_has_source)
+            {
+                if (this.people[b].sources[b_gives] != a)
+                {
+                    this.people[a].sources[b_gives] = this.people[b].sources[b_gives];
+                }
             }
+            else if (a_has_source && !b_has_source)
+            {
+                // presumably you just tried to get this item from b, and b didn't have it.
+                // now b doesn't have a source, you should admit you have no source either.
+                this.people[a].sources.Remove(b_gives);
+            }
+           
+
+            return;
         }
 
         // calculate how much each party thinks the offer is worth.
@@ -265,16 +293,13 @@ class World
         bool go = false;
 
 
-        if (greatest_need != -1)
+        if (this.people[a].sources.ContainsKey(greatest_need))
         {
             int source = this.people[a].sources[greatest_need];
-            if (source != -1)
-            {
-                go = true;
-                destination = this.people[source].position;
-            }
-            
+            go = true;
+            destination = this.people[source].position;
         }
+        
 
         if (go)
         {
