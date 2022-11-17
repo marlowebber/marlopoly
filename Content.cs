@@ -1,4 +1,8 @@
 
+
+static class Content
+{
+
 enum Characteristics 
 {
   Cute,
@@ -9,7 +13,7 @@ enum Characteristics
 }
 
 
-enum Items 
+public enum Items 
 {
 Cash,
   Smokes,
@@ -22,14 +26,6 @@ Cash,
 }
 
 
-enum Characteristics 
-{
-  Cute,
-  Funny,
-  Smart,
-  Tough,
-  Cool,
-}
 
 
 List<string> person_names = new List<string>(new string[]  {
@@ -141,3 +137,8 @@ Dictionary<int,float> recipe_smokes = new Dictionary<int,float>
 };
 
 recipes.Add( (int)Items.Smokes, recipe_smokes);
+
+
+
+
+}
