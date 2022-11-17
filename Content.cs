@@ -59,6 +59,17 @@ Cash,
   Lighter,
 }
 
+public static readonly List<string> item_names = new List<string> ( new[]
+{
+"Cash",
+"Smokes",
+"Filters",
+"Papers",
+"Spin",
+"Beer",
+"Chips",
+"Lighter",
+});
 
 public const int n_items = 8;
 

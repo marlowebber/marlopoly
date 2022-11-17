@@ -1,3 +1,4 @@
 
 # bin is just for built files and is often full of build files and junk.
 bin/*
+obj/*
