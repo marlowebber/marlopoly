@@ -1,7 +1,41 @@
 
 
+
+class Recipe
+{
+	Dictionary<int, float> input = new Dictionary<int, float>();
+	Dictionary<int, float> output = new Dictionary<int, float>();
+
+	public Recipe(Dictionary<int, float> input , Dictionary<int, float> output )
+	{
+		this.input = input;
+		this.output = output;
+	}
+}
+
+
 static class Content
 {
+
+
+	static Dictionary<int, float> ingredients_smokes = new Dictionary<int, float>
+	{
+		{ (int)Content.Items.Filters, 1.0f },
+		{ (int)Content.Items.Papers, 1.0f },
+		{ (int)Content.Items.Spin, 1.0f },
+	};
+
+	static Dictionary<int, float> products_smokes = new Dictionary<int, float>
+	{
+		{ (int)Content.Items.Smokes, 1.0f },
+	};
+	
+	static Dictionary<int, Recipe> recipes = new Dictionary<int, Recipe>
+	{
+		{(int) Content.Items.Smokes, new Recipe(ingredients_smokes, products_smokes) }
+	};
+
+
 public enum Characteristics 
 {
   Cute,
@@ -125,10 +159,22 @@ public static readonly List<string> person_names = new List<string> ( new[]
 });
 
 
+public const int n_person_names = 100;
+
+
+public static readonly List<string> location_names = new List<string> ( new[]
+{
+	"The Lord Raglan Hotel",
+	"The Valley",
+	"Nite Owl Convenience",
+	"The Vending Machine",
+});
+
+public const int n_place_names = 4;
 
 
 
-static readonly Dictionary<int,Dictionary<int,float>> recipes = new Dictionary<int,Dictionary<int,float>>();
+// static readonly Dictionary<int,Dictionary<int,float>> recipes = new Dictionary<int,Dictionary<int,float>>();
 
 
 // Dictionary<int,float> recipe_smokes = new Dictionary<int,float> 
