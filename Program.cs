@@ -34,12 +34,15 @@ public const float smokes_per_turn = 0.01f;
 
 public bool is_location = false;
 
+public char icon;
+
     public Person(string name, ref Random r)
     {
         this.name = name;
         this.hungry = r.NextSingle();
         this.thirsty = r.NextSingle();
         this.hedgy = r.NextSingle();
+        this.icon = (char)r.Next(255);
 
         for (int i = 0; i < Content.n_characteristics; i++)
         {
@@ -80,11 +83,6 @@ public bool is_location = false;
         if (this.likes.ContainsKey(item))
         {
             this.likes[item] += amount;
-
-            if (this.likes[item] == 0.0f )
-            {
-                this.likes.Remove(item);
-            }
         }
         else
         {
@@ -116,6 +114,34 @@ public bool is_location = false;
         this.needs_quantities[ need ] += amount;
         this.needs_priorities[ need ] += priority;
     }
+
+    public int greatest_need()
+    {
+        int greatest_need = -1;
+        float greatest_need_priority = 0.0f;
+
+        foreach (int need in this.needs_priorities.Keys)
+        {
+            if (this.needs_priorities[need] > greatest_need_priority)
+            {
+                greatest_need_priority = this.needs_priorities[need];
+                greatest_need = need;
+            }
+        }
+        return greatest_need;
+
+    }
+
+    public float greatest_need_quantity()
+    {
+        int greatest_need = this.greatest_need();
+        if (greatest_need >=0 )
+        {
+            return this.needs_quantities[greatest_need];
+        }
+        return 0.0f;
+    }
+
 
     public void compile_needs()
     {
@@ -167,12 +193,99 @@ class World
 
     int world_size = 0;
 
+    int player = 36;
+
     List<Person> people = new List<Person>();
 
     public World(int world_size)
     {
         this.world_size = world_size;
     }
+
+
+
+
+    bool print_player = true;
+
+    public void print_character_status(int character)
+    {
+
+        Console.WriteLine( this.people[character].name + " turn " + this.time );
+
+        string owns = "Owns: ";
+        foreach (int item in this.people[character].owns.Keys)
+        {
+            owns += Content.item_names[item] + " " + this.people[character].owns[item].ToString() + ", ";
+        }
+        Console.WriteLine(owns);
+
+        string needs = "Needs amount: ";
+        foreach (int item in this.people[character].needs_quantities.Keys)
+        {
+            needs += Content.item_names[item] + this.people[character].needs_quantities[item].ToString() + ", ";
+        }
+        Console.WriteLine(needs);
+
+        string needsp = "Needs priority: ";
+        foreach (int item in this.people[character].needs_quantities.Keys)
+        {
+            needsp += Content.item_names[item] + this.people[character].needs_priorities[item].ToString() + ", ";
+        }
+        Console.WriteLine(needsp);
+
+        string likes = "Likes: ";
+        foreach (int item in this.people[character].likes.Keys)
+        {
+            likes += this.people[item].name + this.people[character].likes[item].ToString() + ", ";
+        }
+        Console.WriteLine(likes);
+
+        
+
+
+
+    }
+
+
+
+
+
+   public void camera()
+    {
+        int viewport_x = 160;
+        int viewport_y = 16;
+
+        for (int y = 0; y < viewport_y; ++y)
+        {
+            string row = "";
+            for (int x = 0; x < viewport_x; ++x)
+            {
+                char here = '_';
+                for (int k = 0; k < population_size; ++k)
+                {
+                    if ((int)this.people[k].position.X == x && (int)this.people[k].position.Y == y )
+                    {
+                        here = this.people[k].icon;
+
+                        if (this.people[k].chatted_this_turn)
+                        {
+                            here = '?';
+                        }
+                        if (this.people[k].traded_this_turn)
+                        {
+                            here = '$';
+                        }
+
+                        break;
+                    }
+                }
+                row += here;
+            }
+            Console.WriteLine(row);
+        }
+    }
+
+
 
     public void setup(ref Random r)
     {
@@ -207,10 +320,45 @@ class World
         }
     }
 
-    public void trade(int a, int b, int b_gives, float b_gives_amount )
+    public void trade(int a, int b )
     {
 
+
+        int b_gives = this.people[a].greatest_need();
+        float b_gives_amount = this.people[a].greatest_need_quantity();
+
         bool b_can_deal = true;
+
+
+        // if one character doesn't know how much the item is worth, they accept the face value given by the other person,
+        // or if they both don't know, they assume it's just worth 1.
+        if (!this.people[a].prices.ContainsKey(b_gives))
+        {
+            if (this.people[b].prices.ContainsKey(b_gives))
+            {
+                this.people[a].prices.Add(b_gives, this.people[b].prices[b_gives]);
+            }
+            else
+            {
+                this.people[a].prices.Add(b_gives, 1.0f);
+                this.people[b].prices.Add(b_gives, 1.0f);
+            }
+        }
+        if (!this.people[b].prices.ContainsKey(b_gives))
+        {
+            if (this.people[a].prices.ContainsKey(b_gives))
+            {
+                this.people[b].prices.Add(b_gives, this.people[a].prices[b_gives]);
+            }
+        }
+
+
+
+
+
+
+
+
 
         if (this.people[b].owns.ContainsKey(b_gives))
         {
@@ -270,19 +418,29 @@ class World
         {
             if (trade_good != b_gives)
             {
-                float counter_offer_quantity = b_opinion_b_gift / this.people[b].prices[trade_good];
-
-                // scale the amount to the quantity that the giving party has.
-                if (counter_offer_quantity > 0.0f)
+                if (this.people[b].prices.ContainsKey(trade_good))
                 {
-                    counter_offer_quantity = Utilities.clamp(counter_offer_quantity, 0.0f, this.people[a].owns[trade_good]);
-                }
-                else
-                {
-                    counter_offer_quantity = Utilities.clamp(counter_offer_quantity, 0.0f, this.people[b].owns[trade_good]);
-                }
+                    float counter_offer_quantity = b_opinion_b_gift / this.people[b].prices[trade_good];
 
-                counter_offers.Add(trade_good, counter_offer_quantity);
+                    // scale the amount to the quantity that the giving party has.
+                    if (counter_offer_quantity > 0.0f)
+                    {
+                        counter_offer_quantity = Utilities.clamp(counter_offer_quantity, 0.0f, this.people[a].owns[trade_good]);
+                    }
+                    else
+                    {
+                        if (this.people[b].owns.ContainsKey(trade_good))
+                        {
+                            counter_offer_quantity = Utilities.clamp(counter_offer_quantity, 0.0f, this.people[b].owns[trade_good]);
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+
+                    counter_offers.Add(trade_good, counter_offer_quantity);
+                }
             }
         }
 
@@ -320,6 +478,11 @@ class World
             Console.WriteLine( $"{this.people[a].name} traded {counter_offers[a_gives]} {Content.item_names[a_gives]} to {this.people[b].name} for {b_gives} {Content.item_names[b_gives]}" );
             this.people[a].traded_this_turn = true;
             this.people[b].traded_this_turn = true;
+
+
+            this.people[a].compile_needs();  
+            this.people[b].compile_needs();  
+
         }
     }
 
@@ -337,23 +500,18 @@ class World
         this.people[b].adjust_likes(a, rep_adjust_b);
 
         // 2. talk about a person
-        // https://stackoverflow.com/questions/10685142/c-sharp-dictionaries-intersect
-        Dictionary<int, float> mutual_friends =  
-        this.people[a].likes.Where(x => this.people[b].likes.ContainsKey(x.Key))
-                .ToDictionary(x => x.Key, x => x.Value + this.people[b].likes[x.Key]);
-
-        // c should be a randomly chosen mutual friend.
-        int ci = r.Next(0, mutual_friends.Count() );
-        int i = 0;
         int c = -1;
-        foreach (int friend in mutual_friends.Keys)
+        foreach (int friend_of_a in this.people[a].likes.Keys)
         {
-            if (i == ci)
+            foreach (int friend_of_b in this.people[b].likes.Keys)
             {
-                c = friend;
-                break;
+                if (friend_of_a == friend_of_b)
+                {
+                    c = friend_of_a;
+                    break;
+                }
             }
-            i++;
+
         }
 
         if (c != -1)
@@ -376,11 +534,12 @@ class World
     }
 
 
-      public void update_position_based_on_needs(int a, int greatest_need, ref Random r)
+      public void update_position_based_on_needs(int a, ref Random r)
     {
         Vector2 destination = this.people[a].position;
         bool go = false;
 
+        int greatest_need = this.people[a].greatest_need();
 
         if (this.people[a].sources.ContainsKey(greatest_need))
         {
@@ -393,11 +552,9 @@ class World
             this.people[a].sources.Add(greatest_need, r.Next(0,this.population_size ) );
         }
 
-
-
-
         if (go)
         {
+
             float angle = (float)Math.Atan2(destination.Y - this.people[a].position.Y,destination.X - this.people[a].position.X );
 
             const float speed = 1.0f;
@@ -423,27 +580,16 @@ class World
                 this.people[a].position.Y += y_move;
             }
 
+             this.people[a].position.X  = Utilities.clamp( this.people[a].position.X , 0, this.world_size);
+             this.people[a].position.Y  = Utilities.clamp( this.people[a].position.Y , 0, this.world_size);
+
         }
 
     }
 
 
-
-    public void update(ref Random r)
+    public void introduce(int a, int b)
     {
-        for (int a = 0; a < this.population_size; a++  ) 
-        {
-
-            this.people[a].chatted_this_turn = false;
-            this.people[a].traded_this_turn = false;
-
-            for (int b = 0; b < this.population_size; b++  ) 
-            {
-                if (a != b)
-                {
-                    if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
-                    {
-                        Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
 
                         // if the two don't know each other, well they do now! Add them to each other's dictionaries.
                         if (! this.people[a].likes.ContainsKey(b))
@@ -455,40 +601,68 @@ class World
                             this.people[b].likes.Add(a, 0.0f);
                         }
 
-                        this.people[a].compile_needs();  
+    }
 
-                        // choose something out of a's list of needs to trade for.
-                        int greatest_need = -1;
-                        float greatest_need_priority = 0.0f;
-                        foreach (int need in this.people[a].needs_priorities.Keys)
+
+
+    public void update(ref Random r)
+    {
+
+
+        for (int a = 0; a < this.population_size; a++  ) 
+        {
+
+            if (print_player)
+            {
+                if (a == this.player)
+                {
+                    this.print_character_status(a);
+                }
+            }
+
+
+            this.people[a].chatted_this_turn = false;
+            this.people[a].traded_this_turn = false;
+
+
+            for (int b = 0; b < this.population_size; b++  ) 
+            {
+                if (a != b)
+                {
+                    if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
+                    {
+
+                        this.introduce(a,b);
+
+                        if (this.print_player)
                         {
-                            if (this.people[a].needs_priorities[need] > greatest_need_priority)
+                            if (a == this.player || b == this.player)
                             {
-                                greatest_need_priority = Utilities.abs( this.people[a].needs_priorities[need] );
-                                greatest_need = need;
+                                Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
                             }
                         }
-                        
-                        if (greatest_need != -1)
-                        {
-                            this.trade(a, b, greatest_need, this.people[a].needs_quantities[greatest_need]);
-                        }
 
+                     
+                        this.trade(a, b);
+                        
                         if (! this.people[a].is_location )
                         {
                             this.gossip(a, b, ref r);
 
-                            this.people[a].bodily_functions();
-
-                             if (greatest_need != -1)
-                            {
-                                this.update_position_based_on_needs(a, greatest_need, ref r);
-                            }
+                           
                         }
 
                     } 
                 }
             }
+
+            if (! this.people[a].is_location )
+            {
+                this.people[a].bodily_functions();        
+                this.update_position_based_on_needs(a, ref r);
+            }
+
+
         }
 
         this.time++;
@@ -534,6 +708,8 @@ class Game
         {
             this.world.update(ref this.random);
             Console.WriteLine("Turn {0}", i);
+
+            this.world.camera();
         }
     }
 
