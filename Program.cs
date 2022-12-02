@@ -54,27 +54,25 @@ public char icon;
 
     public void adjust_owned(int item, float amount)
     {
-
-        if (!this.prices.ContainsKey(item))
-        {
-            this.prices.Add(item, 1.0f);
-        }
-
         if (this.owns.ContainsKey(item))
         {
             this.owns[item] += amount;
-
-            if (this.owns[item] == 0.0f )
-            {
-                this.owns.Remove(item);
-            }
         }
         else
         {
-            if (amount != 0.0f)
-            {
-                this.owns.Add(item, amount);
-            }
+            this.owns.Add(item, amount);
+        }
+    }
+
+       public void adjust_prices(int item, float amount)
+    {
+        if (this.owns.ContainsKey(item))
+        {
+            this.owns[item] += amount;
+        }
+        else
+        {
+            this.owns.Add(item, amount);
         }
     }
 
@@ -86,11 +84,10 @@ public char icon;
         }
         else
         {
-            if (amount != 0.0f)
-            {
-                this.likes.Add(item, amount);
-            }
+            this.likes.Add(item, amount);
         }
+
+        this.likes[item] = Utilities.clamp(this.likes[item], -1.0f, 1.0f);
     }
 
 
@@ -101,7 +98,7 @@ public char icon;
         this.hedgy = Utilities.clamp( this.hedgy + smokes_per_turn, 0.0f, 2.0f );
     }
 
-    public void add_need(int need, float amount, float priority)
+    public void adjust_needs(int need, float amount, float priority)
     {
         if (! this.needs_quantities.ContainsKey(need))
         {
@@ -154,7 +151,7 @@ public char icon;
             Dictionary<int, float> debt = this.agreements[debtor];
             foreach (int resource in debt.Keys)
             {
-                this.add_need(resource ,  debt[resource] , this.likes[debtor] );
+                this.adjust_needs(resource ,  debt[resource] , this.likes[debtor] );
             }
         }
 
@@ -162,15 +159,15 @@ public char icon;
         {
             if (this.hungry > 1.0f)
             {
-                this.add_need((int)Content.Items.Chips , 1.0f,(int)this.hungry );
+                this.adjust_needs((int)Content.Items.Chips , 1.0f,(int)this.hungry );
             }
             if (this.thirsty > 1.0f)
             {
-                this.add_need((int)Content.Items.Beer  , 1.0f,(int)this.hungry );
+                this.adjust_needs((int)Content.Items.Beer  , 1.0f,(int)this.hungry );
             }
             if (this.hedgy > 1.0f)
             {
-                this.add_need((int)Content.Items.Smokes  , 1.0f,(int)this.hungry );
+                this.adjust_needs((int)Content.Items.Smokes  , 1.0f,(int)this.hungry );
             }
         }
 
@@ -212,6 +209,10 @@ class World
 
         Console.WriteLine( this.people[character].name + " turn " + this.time );
 
+        Console.WriteLine("Hungry: " + this.people[character].hungry.ToString());
+        Console.WriteLine("Hedgy: " + this.people[character].hedgy.ToString());
+        Console.WriteLine("Thirsty: " + this.people[character].thirsty.ToString());
+
         string owns = "Owns: ";
         foreach (int item in this.people[character].owns.Keys)
         {
@@ -222,26 +223,34 @@ class World
         string needs = "Needs amount: ";
         foreach (int item in this.people[character].needs_quantities.Keys)
         {
-            needs += Content.item_names[item] + this.people[character].needs_quantities[item].ToString() + ", ";
+            needs += Content.item_names[item] + " " + this.people[character].needs_quantities[item].ToString() + ", ";
         }
         Console.WriteLine(needs);
 
         string needsp = "Needs priority: ";
         foreach (int item in this.people[character].needs_quantities.Keys)
         {
-            needsp += Content.item_names[item] + this.people[character].needs_priorities[item].ToString() + ", ";
+            needsp += Content.item_names[item] +" " +  this.people[character].needs_priorities[item].ToString() + ", ";
         }
         Console.WriteLine(needsp);
 
         string likes = "Likes: ";
         foreach (int item in this.people[character].likes.Keys)
         {
-            likes += this.people[item].name + this.people[character].likes[item].ToString() + ", ";
+            likes += this.people[item].name + " " + this.people[character].likes[item].ToString() + ", ";
         }
         Console.WriteLine(likes);
 
         
+        string sources = "Sources: ";
+        foreach (int item in this.people[character].sources.Keys)
+        {
+            int source = this.people[character].sources[item];
+            sources += Content.item_names[item] + " " + this.people[source].name + ", ";
+        }
+        Console.WriteLine(sources);
 
+        
 
 
     }
@@ -323,6 +332,7 @@ class World
     public void trade(int a, int b )
     {
 
+        this.introduce(a,b);
 
         int b_gives = this.people[a].greatest_need();
         float b_gives_amount = this.people[a].greatest_need_quantity();
@@ -490,13 +500,18 @@ class World
 
     public void gossip(int a, int b, ref Random r)
     {
+
+
+        this.introduce(a,b);
+
+
         const float const_gossip = 0.25f;
 
         // 1. small talk.
         // a says something that falls somewhere on their scale of personality characteristic.
         // b has a reputation adjustment based on the difference between their ideals and what a said.
         int topic = r.Next(0,Content.n_characteristics);
-        float rep_adjust_b = (1.0f - ((this.people[a].personality[topic] - this.people[b].ideals[topic]) / Content.n_characteristics )) * const_gossip ;
+        float rep_adjust_b =   Utilities.fast_sigmoid(((1.0f - (this.people[a].personality[topic] - this.people[b].ideals[topic] ))) * const_gossip );
         this.people[b].adjust_likes(a, rep_adjust_b);
 
         // 2. talk about a person
@@ -516,11 +531,10 @@ class World
 
         if (c != -1)
         {
-            float rep_adjust_a_b     = this.people[b].likes[c] * this.people[a].likes[c] * const_gossip;
-            float rep_adjust_b_a     = this.people[a].likes[c] * this.people[b].likes[c] * const_gossip;
-
-            float rep_adjust_a_c     = this.people[b].likes[c] * this.people[a].likes[b] * const_gossip;
-            float rep_adjust_b_c     = this.people[a].likes[c] * this.people[b].likes[a] * const_gossip;
+            float rep_adjust_a_b     = Utilities.fast_sigmoid( this.people[b].likes[c] * this.people[a].likes[c] * const_gossip);
+            float rep_adjust_b_a     = Utilities.fast_sigmoid( this.people[a].likes[c] * this.people[b].likes[c] * const_gossip);
+            float rep_adjust_a_c     = Utilities.fast_sigmoid( this.people[b].likes[c] * this.people[a].likes[b] * const_gossip);
+            float rep_adjust_b_c     = Utilities.fast_sigmoid( this.people[a].likes[c] * this.people[b].likes[a] * const_gossip);
 
             this.people[a].adjust_likes(b, rep_adjust_a_b);
             this.people[a].adjust_likes(c, rep_adjust_a_c);
@@ -594,23 +608,20 @@ class World
                         // if the two don't know each other, well they do now! Add them to each other's dictionaries.
                         if (! this.people[a].likes.ContainsKey(b))
                         {
-                            this.people[a].likes.Add(b, 0.0f);
+                            this.people[a].adjust_likes(b, 0.0f);
                         }
                         if (! this.people[b].likes.ContainsKey(a))
                         {
-                            this.people[b].likes.Add(a, 0.0f);
+                            this.people[b].adjust_likes(a, 0.0f);
                         }
 
     }
 
 
-
-    public void update(ref Random r)
+    public void person_turn(int a, ref Random r)
     {
 
-
-        for (int a = 0; a < this.population_size; a++  ) 
-        {
+            this.people[a].compile_needs(); 
 
             if (print_player)
             {
@@ -625,6 +636,8 @@ class World
             this.people[a].traded_this_turn = false;
 
 
+
+
             for (int b = 0; b < this.population_size; b++  ) 
             {
                 if (a != b)
@@ -632,7 +645,6 @@ class World
                     if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
                     {
 
-                        this.introduce(a,b);
 
                         if (this.print_player)
                         {
@@ -662,7 +674,19 @@ class World
                 this.update_position_based_on_needs(a, ref r);
             }
 
+    }
 
+
+
+    public void update(ref Random r)
+    {
+
+
+        for (int a = 0; a < this.population_size; a++  ) 
+        {
+
+
+            this.person_turn(a, ref r);
         }
 
         this.time++;
