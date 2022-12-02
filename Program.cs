@@ -91,11 +91,67 @@ public char icon;
     }
 
 
+    public int best_friend()
+    {
+        int bf = -1;
+        float bf_like = 0.0f;
+        foreach (int peep in this.likes.Keys)
+        {
+            if (this.likes[peep] > bf_like)
+            {
+                bf = peep;
+                bf_like = this.likes[peep];
+            }
+        }
+        return bf;
+    }
+
+
+
     public void bodily_functions()
     {
         this.hungry = Utilities.clamp( this.hungry + eats_per_turn, 0.0f, 2.0f );
         this.thirsty = Utilities.clamp( this.thirsty + drinks_per_turn, 0.0f, 2.0f );
         this.hedgy = Utilities.clamp( this.hedgy + smokes_per_turn, 0.0f, 2.0f );
+
+        if (this.hungry > 1.0f)
+        {
+            if (this.owns.ContainsKey((int)Content.Items.Chips))
+            {
+                if (this.owns[(int)Content.Items.Chips] >= (this.quantity_owed_to_others((int)Content.Items.Chips) + 1.0f ))
+                {
+                    this.owns[(int)Content.Items.Chips] -= 1.0f;
+                    this.hungry -= 1.0f;
+                }
+            }
+        }
+
+
+        if (this.hedgy > 1.0f)
+        {
+            if (this.owns.ContainsKey((int)Content.Items.Smokes))
+            {
+                if (this.owns[(int)Content.Items.Smokes] >= (this.quantity_owed_to_others((int)Content.Items.Smokes) + 1.0f ))
+                {
+                    this.owns[(int)Content.Items.Smokes] -= 1.0f;
+                    this.hedgy -= 1.0f;
+                }
+            }
+        }
+
+
+        if (this.thirsty > 1.0f)
+        {
+            if (this.owns.ContainsKey((int)Content.Items.Beer))
+            {
+                if (this.owns[(int)Content.Items.Beer] >= (this.quantity_owed_to_others((int)Content.Items.Beer) + 1.0f ))
+                {
+                    this.owns[(int)Content.Items.Beer] -= 1.0f;
+                    this.thirsty -= 1.0f;
+                }
+            }
+        }
+
     }
 
     public void adjust_needs(int need, float amount, float priority)
@@ -140,6 +196,17 @@ public char icon;
     }
 
 
+    public float quantity_owed_to_others(int item)
+    {
+        float amount = 0.0f;
+        foreach (int debtor in this.agreements.Keys)
+        {
+            amount += this.agreements[debtor][item];
+        }  
+        return amount;
+    }
+
+
     public void compile_needs()
     {
         // rebuild the list of needs from various agreements and bodily needs.
@@ -154,7 +221,7 @@ public char icon;
                 this.adjust_needs(resource ,  debt[resource] , this.likes[debtor] );
             }
         }
-
+       
         if (! this.is_location)
         {
             if (this.hungry > 1.0f)
@@ -327,6 +394,24 @@ class World
             this.people[i].is_location = true;
             i++;
         }
+
+
+        for(int j= 0; j < this.population_size; j++ )
+        {
+            if (r.Next(0,2) > 0)
+            {
+                this.people[j].sources.Add( (int) Content.Items.Beer  , 1 ); // the valley
+            }
+            else
+            {
+                this.people[j].sources.Add( (int) Content.Items.Beer  , 0 ); // the lord raglan hotel
+            }
+
+            this.people[j].sources.Add( (int) Content.Items.Chips  , 3 ); // the vending machine
+            this.people[j].sources.Add( (int) Content.Items.Spin  , 2 ); // Nite Owl
+            this.people[j].sources.Add( (int) Content.Items.Papers  , 2 ); // Nite Owl
+            this.people[j].sources.Add( (int) Content.Items.Filters  , 2 ); // Nite Owl
+        }
     }
 
     public void trade(int a, int b )
@@ -336,6 +421,11 @@ class World
 
         int b_gives = this.people[a].greatest_need();
         float b_gives_amount = this.people[a].greatest_need_quantity();
+
+        if (b_gives == -1) 
+        {
+            return;
+        }
 
         bool b_can_deal = true;
 
@@ -390,7 +480,7 @@ class World
         if (b_gives_amount == 0.0f) { b_can_deal = false; }
 
 
-        if (!b_can_deal)
+        if (!b_can_deal && b_gives != -1)
         {
             // if b doesn't have the thing, and b was a's source, refer a to b's source.
             bool a_has_source = this.people[a].sources.ContainsKey(b_gives);
@@ -505,7 +595,7 @@ class World
         this.introduce(a,b);
 
 
-        const float const_gossip = 0.25f;
+        const float const_gossip = 0.025f;
 
         // 1. small talk.
         // a says something that falls somewhere on their scale of personality characteristic.
@@ -545,6 +635,32 @@ class World
         this.people[a].chatted_this_turn = true;
         this.people[b].chatted_this_turn = true;
 
+
+        // 3. exchange source information
+        foreach (int item in this.people[a].sources.Keys)
+        {
+            if (! this.people[b].sources.ContainsKey(item))
+            {
+                this.people[b].sources.Add(item, this.people[a].sources[item]);
+            }
+            else
+            {
+                int source_a = this.people[a].sources[item];
+                int source_b = this.people[b].sources[item];
+
+                if (this.people[source_a].prices.ContainsKey(item) && this.people[source_b].prices.ContainsKey(item))
+                {
+                    if (this.people[source_a].prices[item] > this.people[source_b].prices[item])
+                    {
+                        this.people[a].sources[item] = source_b;
+                    }
+                    else
+                    {
+                        this.people[b].sources[item] = source_a;
+                    }
+                }
+            }
+        }
     }
 
 
@@ -554,16 +670,55 @@ class World
         bool go = false;
 
         int greatest_need = this.people[a].greatest_need();
+        int bf = this.people[a].best_friend();
+
+        
+        if (a == this.player && this.print_player && greatest_need != -1)
+        {
+            Console.WriteLine("Greatest Need: " +  Content.item_names[ greatest_need ]);
+        }
 
         if (this.people[a].sources.ContainsKey(greatest_need))
         {
             int source = this.people[a].sources[greatest_need];
             go = true;
             destination = this.people[source].position;
+
+              if (a == this.player && this.print_player)
+            {
+                Console.WriteLine("    Moving to source: " + this.people[source].name);
+            }
+        }
+        else if (greatest_need == -1 && bf >= 0 )
+        {
+            // you don't need anything; go hang out with a friend
+            destination = this.people[bf].position;
+            go = true;
+            if (a == this.player && this.print_player)
+            {
+                Console.WriteLine("    Hanging out with " + this.people[bf].name);
+            }
+        }
+        else if (greatest_need == -1 && bf == -1 )
+        {
+            // you don't need anything; but you don't have any friends either.
+            // vibrate around randomly until you bump into something.
+            if (a == this.player && this.print_player)
+            {
+                Console.WriteLine("    Wandering");
+            }
+            destination.X += r.NextSingle() - 0.5f;
+            destination.Y += r.NextSingle() - 0.5f;
+            go = true;
         }
         else
         {
-            this.people[a].sources.Add(greatest_need, r.Next(0,this.population_size ) );
+            int source = r.Next(0,this.population_size);
+            if (a == this.player && this.print_player)
+            {
+                Console.WriteLine("    Asking a random person: " + this.people[source].name);
+            }
+            this.people[a].sources.Add(greatest_need,  source );
         }
 
         if (go)
@@ -623,7 +778,7 @@ class World
 
             this.people[a].compile_needs(); 
 
-            if (print_player)
+            if (this.print_player)
             {
                 if (a == this.player)
                 {
@@ -637,9 +792,10 @@ class World
 
 
 
-
-            for (int b = 0; b < this.population_size; b++  ) 
+            int random_start = r.Next(0, this.population_size);
+            for (int bhh = 0; bhh < this.population_size; bhh++  ) 
             {
+                int b = (bhh + random_start) % this.population_size;
                 if (a != b)
                 {
                     if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
@@ -664,6 +820,7 @@ class World
                            
                         }
 
+                        break;
                     } 
                 }
             }
