@@ -202,7 +202,10 @@ public char icon;
         float amount = 0.0f;
         foreach (int debtor in this.agreements.Keys)
         {
-            amount += this.agreements[debtor][item];
+            if (this.agreements[debtor].ContainsKey(item))
+            {
+                amount += this.agreements[debtor][item];
+            }
         }  
         return amount;
     }
@@ -241,7 +244,7 @@ public char icon;
       
 
         // everyone wants 1,000,000 dollars
-        this.adjust_needs((int)Content.Items.Cash  , 1000000.0f, 1.0f);
+        // this.adjust_needs((int)Content.Items.Cash  , 1000000.0f, 1.0f);
         
 
 
@@ -331,7 +334,18 @@ class World
         Console.WriteLine(sources);
 
         
+        string owes = "Owes: ";
+        foreach (int debtor in this.people[character].agreements.Keys)
+        {
+            owes += this.people[debtor].name + " ";
+            foreach ( System.Collections.Generic.KeyValuePair<int, float> agreement in this.people[character].agreements[debtor])
+            {
+                owes += agreement.Value.ToString() + " " + Content.item_names[ agreement.Key ];
+            }
 
+            owes += ", ";
+        } 
+        Console.WriteLine(owes);
 
     }
 
@@ -420,10 +434,31 @@ class World
                 this.people[j].sources.Add( (int) Content.Items.Beer  , 0 ); // the lord raglan hotel
             }
 
-            this.people[j].sources.Add( (int) Content.Items.Chips  , 3 ); // the vending machine
-            this.people[j].sources.Add( (int) Content.Items.Spin  , 2 ); // Nite Owl
-            this.people[j].sources.Add( (int) Content.Items.Papers  , 2 ); // Nite Owl
-            this.people[j].sources.Add( (int) Content.Items.Filters  , 2 ); // Nite Owl
+            int random_source = r.Next(0,4);
+
+            switch(random_source)
+            {
+                case 0:
+                {
+                    this.people[j].sources.Add( (int) Content.Items.Chips  , 3 ); // the vending machine
+                    break;
+                }
+                 case 1:
+                {
+                    this.people[j].sources.Add( (int) Content.Items.Spin  , 2 ); // Nite Owl
+                    break;
+                }
+                 case 2:
+                {
+                    this.people[j].sources.Add( (int) Content.Items.Papers  , 2 ); // Nite Owl
+                    break;
+                }
+                 case 3:
+                {
+                    this.people[j].sources.Add( (int) Content.Items.Filters  , 2 ); // Nite Owl
+                    break;
+                }
+            }
 
             for(int k= 0; k < Content.n_items; k++ )
             {
@@ -432,6 +467,59 @@ class World
             
 
         }
+
+        this.adjust_agreement(this.player, this.player-1, (int)Content.Items.Cash, 100.0f);
+        this.people[this.player].adjust_likes(this.player-1, 0.5f);
+    }
+
+
+
+
+    public void adjust_agreement(int a, int b, int item, float quantity)
+    {
+        // A will owe X amount of stuff to B.
+        // A understands that they owe B, and B understands that A owes them.
+
+        this.introduce(a,b);
+
+        bool exists_a = this.people[a].agreements.ContainsKey(b);
+        bool exists_b = this.people[b].agreements.ContainsKey(a);
+
+        if (exists_a && ! exists_b)
+        {
+            // if one party has a copy of the agreement and the other doesn't, mirror that person's part of the agreement to make the other person's one.
+            Dictionary<int, float> for_b = this.people[a].agreements[b];
+            foreach (int owed_thing in for_b.Keys )
+            {   
+                for_b[owed_thing] *= -1;
+            }
+            this.people[a].agreements.Add( b ,for_b  );
+        }
+        else if (!exists_a && exists_b)
+        {
+            Dictionary<int, float> for_a = this.people[b].agreements[a];
+            foreach (int owed_thing in for_a.Keys )
+            {   
+                for_a[owed_thing] *= -1;
+            }
+            this.people[a].agreements.Add( a ,for_a  );
+        }
+        else if (!exists_a && !exists_b)
+        {
+            Dictionary<int, float> debt = new Dictionary<int, float>();
+            Dictionary<int, float> credit = new Dictionary<int, float>();
+            debt.Add( item, quantity );
+            credit.Add( item, quantity );
+            this.people[a].agreements.Add( b ,debt  );
+            this.people[b].agreements.Add( a ,credit  );
+        }
+        else if (exists_a && exists_b)
+        {
+            // they both agree on an existing agreement; adjust the quantity by the indicated amount.
+            this.people[a].agreements[b][item] += quantity;
+            this.people[b].agreements[a][item] -= quantity;
+        }
+
     }
 
 
@@ -512,24 +600,7 @@ class World
     public void trade(int a, int b, int b_gives, float b_gives_amount , ref Random r)
     {
 
-
-        int a_gives = -1;
-        float a_gives_amount = 0.0f;
-
-        if (a == this.player || b == this.player)
-        {
-            Console.WriteLine( this.people[a].name + " is trading with " + this.people[b].name);
-        }
-
-        if (b_gives_amount < 0.0f)
-        {
-            if (a == this.player || b == this.player)
-            {
-                Console.WriteLine( "Trade failed: wants a negative amount.");
-            }
-            return;
-        }
-        if (b_gives == -1)
+         if (b_gives == -1)
         {
             if (a == this.player || b == this.player)
             {
@@ -538,6 +609,20 @@ class World
             return;
         }
     
+
+
+
+        const float trade_coeff = 0.025f;
+
+        int a_gives = -1;
+        float a_gives_amount = 0.0f;
+
+        if (a == this.player || b == this.player)
+        {
+            Console.WriteLine( this.people[a].name + " asks " + this.people[b].name + " if they have " + b_gives_amount.ToString() + " " + Content.item_names[b_gives]);
+        }
+
+  
      
      
         this.exchange_price_information(a, b, b_gives, ref r);
@@ -561,20 +646,37 @@ class World
                 b_has_available = this.people[b].owns[b_gives] - this.people[b].needs_quantities[b_gives];
             }
 
+
             if (b_gives_amount > b_has_available)
             {
                 b_gives_amount = b_has_available;
                 b_has_the_item = true;
             }
+            
            
         }
 
 
         if (b_has_the_item)
         {
+
+
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[b].name + " will trade " + b_gives_amount.ToString() + " " + Content.item_names[b_gives] );
+            }
+
             // calculate how much each party thinks the offer is worth.
             a_opinion_b_gift = b_gives_amount * this.people[a].prices[b_gives];
             b_opinion_b_gift = b_gives_amount * this.people[b].prices[b_gives];
+
+
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[a].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + a_opinion_b_gift.ToString() );
+                Console.WriteLine( this.people[a].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + b_opinion_b_gift.ToString() );
+            }
+
 
             // counter-offers are prepared.
             foreach (int trade_good in this.people[a].owns.Keys)
@@ -592,6 +694,8 @@ class World
                     if (counter_offer_quantity > 0.0f)
                     {
                         counter_offer_quantity = Utilities.clamp(counter_offer_quantity, 0.0f, this.people[a].owns[trade_good]);
+
+
                     }
                     else
                     {
@@ -603,6 +707,12 @@ class World
 
                     counter_offers.Add(trade_good, counter_offer_quantity);
                     counter_offers_prepared = true;
+
+
+                    if (a == this.player || b == this.player)
+                    {
+                        Console.WriteLine( this.people[a].name + " offers " + counter_offer_quantity.ToString() + " " + Content.item_names[trade_good] + " in return." );
+                    }
                     
                 }
             }
@@ -644,13 +754,13 @@ class World
             float a_opinion_a_gift = counter_offers[a_gives] * this.people[a].prices[b_gives];
             float b_opinion_a_gift = counter_offers[a_gives] * this.people[b].prices[b_gives];
 
-            float rep_adjust_a = Utilities.fast_sigmoid(    a_opinion_b_gift - a_opinion_a_gift );
-            float rep_adjust_b = Utilities.fast_sigmoid(    b_opinion_a_gift - b_opinion_b_gift );
+            float rep_adjust_a = Utilities.fast_sigmoid(    (a_opinion_b_gift - a_opinion_a_gift) * trade_coeff  );
+            float rep_adjust_b = Utilities.fast_sigmoid(    (b_opinion_a_gift - b_opinion_b_gift) * trade_coeff  );
 
             this.people[a].adjust_likes(b, rep_adjust_a);
             this.people[b].adjust_likes(a, rep_adjust_b);
 
-            Console.WriteLine( $"{this.people[a].name} traded {counter_offers[a_gives]} {Content.item_names[a_gives]} to {this.people[b].name} for {b_gives_amount} {Content.item_names[b_gives]}" );
+            // Console.WriteLine( $"{this.people[a].name} traded {counter_offers[a_gives]} {Content.item_names[a_gives]} to {this.people[b].name} for {b_gives_amount} {Content.item_names[b_gives]}" );
             this.people[a].traded_this_turn = true;
             this.people[b].traded_this_turn = true;
 
@@ -660,8 +770,8 @@ class World
 
             if (a == this.player || b == this.player)
             {
-                Console.WriteLine(" A deal was reached: A received " + b_gives_amount.ToString() + " " +  Content.item_names[b_gives] 
-                  + ", and B received "  + counter_offers[a_gives] .ToString() + " " +  Content.item_names[a_gives] );
+                Console.WriteLine(" A deal was reached: " + this.people[a].name + " received " + b_gives_amount.ToString() + " " +  Content.item_names[b_gives] 
+                  + ", and " + this.people[b].name + " received "  + counter_offers[a_gives] .ToString() + " " +  Content.item_names[a_gives] );
             }
 
 
@@ -686,7 +796,8 @@ class World
             {
                 if (a == this.player || b == this.player)
                 {
-                    Console.WriteLine(" A deal could not be reached: B doesn't have the item that A wants.");
+                    Console.WriteLine(" A deal could not be reached: " + this.people[b].name
+                     + " doesn't have the item that " + this.people[a].name + " wants.");
                 }
             }
 
@@ -696,7 +807,7 @@ class World
             {
                 if (a == this.player || b == this.player)
                 {
-                    Console.WriteLine(" A deal could not be reached: A doesn't have anything to trade.");
+                    Console.WriteLine(" A deal could not be reached: " + this.people[a].name + " doesn't have anything to trade.");
                 }
             }
 
@@ -714,7 +825,7 @@ class World
 
                 if (a == this.player || b == this.player)
                 {
-                    Console.WriteLine(" A deal could not be reached: B doesn't want any of the counter-offers.");
+                    Console.WriteLine(" A deal could not be reached: " + this.people[b].name+ " doesn't want any of the counter-offers.");
                 }
             }
 
@@ -815,7 +926,39 @@ class World
         bool go = false;
 
         int greatest_need = this.people[a].greatest_need();
+        float greatest_need_priority = 0.0f;
+        if (this.people[a].needs_priorities.ContainsKey(greatest_need))
+        {
+            greatest_need_priority = this.people[a].needs_priorities[greatest_need];
+        }
         int bf = this.people[a].best_friend();
+
+        bool can_pay_debt = false;
+        float biggest_payment_importance = 0.0f;
+        int biggest_creditor = -1;
+
+        foreach( int creditor in this.people[a].agreements.Keys)
+        {
+            foreach (int item in this.people[a].agreements[creditor].Keys)
+            {
+                if (this.people[a].owns.ContainsKey(item))
+                {
+                    if (this.people[a].likes.ContainsKey(creditor))
+                    {
+                        if (this.people[a].likes[creditor] > biggest_payment_importance)
+                        {
+                            biggest_payment_importance = this.people[a].likes[creditor];
+                            can_pay_debt = true;
+                            biggest_creditor = creditor;
+
+                        }
+                    }
+                }   
+            }
+        }
+
+
+
 
         
         if (a == this.player && this.print_player && greatest_need != -1)
@@ -823,7 +966,22 @@ class World
             Console.WriteLine("Greatest Need: " +  Content.item_names[ greatest_need ]);
         }
 
-        if (this.people[a].sources.ContainsKey(greatest_need))
+
+
+        if (can_pay_debt && biggest_payment_importance > greatest_need_priority)
+        {
+            go = true;
+            destination = this.people[biggest_creditor].position;
+
+                if (a == this.player && this.print_player)
+            {
+                Console.WriteLine("    Going to see " + this.people[biggest_creditor].name + " to repay debt. ");
+            }
+        }
+
+
+
+        else if (this.people[a].sources.ContainsKey(greatest_need))
         {
             int source = this.people[a].sources[greatest_need];
             go = true;
@@ -918,6 +1076,33 @@ class World
     }
 
 
+    public void settle_agreements(int a, int b)
+    {
+
+        if (this.people[a].agreements.ContainsKey(b))
+        {
+            foreach (int item in this.people[a].agreements[b].Keys)
+            {
+                if (this.people[a].owns[item] > 0.0f)
+                {
+
+                    float amount_to_give = this.people[a].agreements[b][item];
+
+                    if (amount_to_give > this.people[a].owns[item])
+                    {
+                        amount_to_give = this.people[a].owns[item];
+                    }
+
+                    // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
+                    this.adjust_agreement(a, b, item, -amount_to_give);
+                }
+            }
+        }
+
+
+    }
+
+
     public void person_turn(int a, ref Random r)
     {
 
@@ -958,6 +1143,14 @@ class World
 
 
                         this.introduce(a,b);
+
+
+
+                        this.settle_agreements(a, b);
+
+
+
+
 
                         int b_gives = this.people[a].greatest_need();
                         float b_gives_amount = this.people[a].greatest_need_quantity();
