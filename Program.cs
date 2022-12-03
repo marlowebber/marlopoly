@@ -36,18 +36,18 @@ public bool is_location = false;
 
 public char icon;
 
-    public Person(string name, ref Random r)
+    public Person(string name)
     {
         this.name = name;
-        this.hungry = r.NextSingle();
-        this.thirsty = r.NextSingle();
-        this.hedgy = r.NextSingle();
-        this.icon = (char)r.Next(255);
+        this.hungry = Utilities.rng_float();
+        this.thirsty = Utilities.rng_float();
+        this.hedgy = Utilities.rng_float();
+        this.icon = Utilities.rng_char();
 
         for (int i = 0; i < Content.n_characteristics; i++)
         {
-            this.personality.Add(i, r.NextSingle());
-            this.ideals.Add(i, r.NextSingle());
+            this.personality.Add(i, Utilities.rng_float());
+            this.ideals.Add(i, Utilities.rng_float());
         }
     }
 
@@ -159,14 +159,21 @@ public char icon;
     {
         if (! this.needs_quantities.ContainsKey(need))
         {
-            this.needs_quantities.Add(need, 0.0f);
+            this.needs_quantities.Add(need, amount);
         }
+        else
+        {
+            this.needs_quantities[ need ] += amount;
+        }
+
         if (! this.needs_priorities.ContainsKey(need))
         {
-            this.needs_priorities.Add(need, 0.0f);
+            this.needs_priorities.Add(need, priority);
         }
-        this.needs_quantities[ need ] += amount;
-        this.needs_priorities[ need ] += priority;
+         else
+        {
+            this.needs_priorities[ need ] += priority;
+        }
     }
 
     public int greatest_need()
@@ -222,7 +229,11 @@ public char icon;
             Dictionary<int, float> debt = this.agreements[debtor];
             foreach (int resource in debt.Keys)
             {
-                this.adjust_needs(resource ,  debt[resource] , this.likes[debtor] );
+               
+                float value_of_debt_to_a = debt[resource] * this.prices[resource] * this.likes[debtor];
+                
+                this.adjust_needs(resource ,  debt[resource] , value_of_debt_to_a );
+
             }
         }
        
@@ -255,6 +266,8 @@ public char icon;
 
   
 }
+
+
 
 
 
@@ -390,25 +403,25 @@ class World
 
 
 
-    public void setup(ref Random r)
+    public void setup()
     {
         this.people.Clear();
         this.population_size = 0;
         foreach (string name in Content.person_names)
         {
-            this.people.Add(new Person(name, ref r));
+            this.people.Add(new Person(name));
             this.population_size++;
         }
 
 
         for(int j= 0; j < this.population_size; j++ )
         {
-            this.people[j].position.X = r.NextSingle() * this.world_size;
-            this.people[j].position.Y = r.NextSingle() * this.world_size;
+            this.people[j].position.X = Utilities.rng_float() * this.world_size;
+            this.people[j].position.Y = Utilities.rng_float() * this.world_size;
 
             
-            this.people[j].adjust_owned(  (int) r.Next(0,Content.n_items), r.NextSingle() * 10.0f  );
-            this.people[j].adjust_owned(  (int)Content.Items.Cash, r.NextSingle() * 20.0f );
+            this.people[j].adjust_owned(  (int) Utilities.rng_int(Content.n_items), Utilities.rng_float()* 10.0f  );
+            this.people[j].adjust_owned(  (int)Content.Items.Cash, Utilities.rng_float() * 20.0f );
 
 
 
@@ -425,7 +438,7 @@ class World
 
         for(int j= 0; j < this.population_size; j++ )
         {
-            if (r.Next(0,2) > 0)
+            if (Utilities.rng_bool())
             {
                 this.people[j].sources.Add( (int) Content.Items.Beer  , 1 ); // the valley
             }
@@ -434,7 +447,7 @@ class World
                 this.people[j].sources.Add( (int) Content.Items.Beer  , 0 ); // the lord raglan hotel
             }
 
-            int random_source = r.Next(0,4);
+            int random_source = Utilities.rng_int(4);
 
             switch(random_source)
             {
@@ -462,7 +475,7 @@ class World
 
             for(int k= 0; k < Content.n_items; k++ )
             {
-                this.people[j].adjust_prices(k, 0.5f + r.NextSingle() );
+                this.people[j].adjust_prices(k, 0.5f + Utilities.rng_float() );
             }
             
 
@@ -481,6 +494,7 @@ class World
         // A understands that they owe B, and B understands that A owes them.
 
         this.introduce(a,b);
+        this.exchange_price_information(a, b, item);
 
         bool exists_a = this.people[a].agreements.ContainsKey(b);
         bool exists_b = this.people[b].agreements.ContainsKey(a);
@@ -509,7 +523,7 @@ class World
             Dictionary<int, float> debt = new Dictionary<int, float>();
             Dictionary<int, float> credit = new Dictionary<int, float>();
             debt.Add( item, quantity );
-            credit.Add( item, quantity );
+            credit.Add( item, -quantity );
             this.people[a].agreements.Add( b ,debt  );
             this.people[b].agreements.Add( a ,credit  );
         }
@@ -518,12 +532,18 @@ class World
             // they both agree on an existing agreement; adjust the quantity by the indicated amount.
             this.people[a].agreements[b][item] += quantity;
             this.people[b].agreements[a][item] -= quantity;
+
+            if (this.people[a].agreements[b][item] ==0.0f || this.people[b].agreements[a][item] == 0.0f)
+            {
+                this.people[a].agreements[b].Remove(item);
+                this.people[b].agreements[a].Remove(item);
+            } 
         }
 
     }
 
 
-    public void exchange_price_information(int a, int b, int item, ref Random r)
+    public void exchange_price_information(int a, int b, int item)
     {
          // if one character doesn't know how much the item is worth, they accept the face value given by the other person,
         // or if they both don't know, they assume it's just worth 1.
@@ -543,8 +563,8 @@ class World
         if (!a_knows && !b_knows)
         {
             float noise_amp = 0.001f;
-            float noise_a = r.NextSingle() * noise_amp;
-            float noise_b = r.NextSingle() * noise_amp;
+            float noise_a = Utilities.rng_float() * noise_amp;
+            float noise_b = Utilities.rng_float() * noise_amp;
 
             this.people[a].prices.Add(item, 1.0f + noise_a);
             this.people[b].prices.Add(item, 1.0f + noise_b);
@@ -597,7 +617,100 @@ class World
     }
 
 
-    public void trade(int a, int b, int b_gives, float b_gives_amount , ref Random r)
+
+
+
+
+    public void trade(int a, int b)
+    {
+
+
+        Dictionary<int, float> a_tradeable_quantities = new Dictionary<int, float>();
+        Dictionary<int, float> b_tradeable_quantities = new Dictionary<int, float>();
+        
+        Dictionary<int, float> a_tradeable_values_to_a = new Dictionary<int, float>();
+        Dictionary<int, float> b_tradeable_values_to_a = new Dictionary<int, float>();
+        Dictionary<int, float> a_tradeable_values_to_b = new Dictionary<int, float>();
+        Dictionary<int, float> b_tradeable_values_to_b = new Dictionary<int, float>();
+
+
+        Dictionary<int, float> b_tradeable_profitability_to_a = new Dictionary<int, float>();
+        Dictionary<int, float> a_tradeable_profitability_to_b = new Dictionary<int, float>();
+        
+
+        foreach (int good in this.people[a].owns.Keys)
+        {
+            float tradeable_volume = this.people[a].owns[good];
+            if (this.people[a].needs_quantities.ContainsKey(good) )
+            {
+                tradeable_volume -= this.people[a].needs_quantities[good];
+            }
+
+            // the tradeable volume is reduced to the size that the other party actually wants.
+            if (this.people[b].needs_quantities.ContainsKey(good))
+            {
+                tradeable_volume = this.people[b].needs_quantities[good];
+                a_tradeable_quantities.Add(good, tradeable_volume);
+
+                a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
+                a_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+
+                a_tradeable_profitability_to_b.Add(good, this.people[b].prices[good]  - this.people[a].prices[good]   );
+            }
+        }
+
+        foreach (int good in this.people[b].owns.Keys)
+        {
+            float tradeable_volume = this.people[b].owns[good];
+            if (this.people[b].needs_quantities.ContainsKey(good) )
+            {
+                tradeable_volume -= this.people[b].needs_quantities[good];
+            }
+
+            if (this.people[a].needs_quantities.ContainsKey(good))
+            {
+                tradeable_volume = this.people[b].needs_quantities[good];
+                b_tradeable_quantities.Add(good, tradeable_volume);
+
+                b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
+                b_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+
+                b_tradeable_profitability_to_a.Add(good, this.people[a].prices[good]  - this.people[b].prices[good]   );
+            }
+        }
+
+
+        // loop over the tradeable goods as many times as necessary.
+        // each time, the people select the most profitable good from the other, and exchange it,
+        // until one of them runs out of stuff to trade
+         
+        
+        
+
+
+
+        // B selects an agreeable counter offer, if there is one, 
+
+        // and then B gives A what they feel is an appropriate quantity of the original item.
+
+        // if the trade is scaled down by B, both parties get a rep penalty
+        
+        // if the original trade was accepted, both parties get a rep bonus
+
+        
+
+
+
+
+    }
+
+
+
+
+
+
+
+    public void trade_old(int a, int b, int b_gives, float b_gives_amount )
     {
 
          if (b_gives == -1)
@@ -625,7 +738,7 @@ class World
   
      
      
-        this.exchange_price_information(a, b, b_gives, ref r);
+        this.exchange_price_information(a, b, b_gives);
 
 
         bool b_has_the_item = false;
@@ -661,22 +774,7 @@ class World
         {
 
 
-            if (a == this.player || b == this.player)
-            {
-                Console.WriteLine( this.people[b].name + " will trade " + b_gives_amount.ToString() + " " + Content.item_names[b_gives] );
-            }
-
-            // calculate how much each party thinks the offer is worth.
-            a_opinion_b_gift = b_gives_amount * this.people[a].prices[b_gives];
-            b_opinion_b_gift = b_gives_amount * this.people[b].prices[b_gives];
-
-
-            if (a == this.player || b == this.player)
-            {
-                Console.WriteLine( this.people[a].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + a_opinion_b_gift.ToString() );
-                Console.WriteLine( this.people[a].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + b_opinion_b_gift.ToString() );
-            }
-
+           
 
             // counter-offers are prepared.
             foreach (int trade_good in this.people[a].owns.Keys)
@@ -685,7 +783,7 @@ class World
                 {
                     if (! this.people[b].prices.ContainsKey(trade_good))
                     {
-                        this.exchange_price_information(a, b, trade_good, ref r);
+                        this.exchange_price_information(a, b, trade_good);
                     }
 
                     float counter_offer_quantity = b_opinion_b_gift / this.people[b].prices[trade_good];
@@ -709,10 +807,7 @@ class World
                     counter_offers_prepared = true;
 
 
-                    if (a == this.player || b == this.player)
-                    {
-                        Console.WriteLine( this.people[a].name + " offers " + counter_offer_quantity.ToString() + " " + Content.item_names[trade_good] + " in return." );
-                    }
+                  
                     
                 }
             }
@@ -725,22 +820,68 @@ class World
             foreach (int trade_good in counter_offers.Keys)
             {
 
-                this.exchange_price_information(a, b, trade_good, ref r);
+                this.exchange_price_information(a, b, trade_good);
 
-                float counter_offer_value_to_a = counter_offers[trade_good] * this.people[a].prices[trade_good];
-                if (counter_offer_value_to_a > best_offer_value)
+                float counter_offer_value_to_b = counter_offers[trade_good] * this.people[b].prices[trade_good];
+
+                  if (a == this.player || b == this.player)
+                    {
+                        Console.WriteLine( this.people[a].name + " offers " + counter_offers[trade_good].ToString() + " " + Content.item_names[trade_good] + " in return, "
+                        + "which to " + this.people[b].name + " is worth " + counter_offer_value_to_b.ToString()
+                         );
+                    }
+
+                if (counter_offer_value_to_b > best_offer_value)
                 {   
-                    best_offer_value = counter_offer_value_to_a;
+                    best_offer_value = counter_offer_value_to_b;
                     a_gives = trade_good;
                     counter_offer_chosen = true;
                 }
             }
         }
 
+
+
+
+
+
+
+
+
+ if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[b].name + " will trade up to " + b_gives_amount.ToString() + " " + Content.item_names[b_gives] );
+            }
+
+            // calculate how much each party thinks the offer is worth.
+            a_opinion_b_gift = b_gives_amount * this.people[a].prices[b_gives];
+            b_opinion_b_gift = b_gives_amount * this.people[b].prices[b_gives];
+
+
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[a].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + a_opinion_b_gift.ToString() );
+                Console.WriteLine( this.people[b].name + " thinks that " + b_gives_amount.ToString() +" " +  Content.item_names[b_gives]  + " is worth " + b_opinion_b_gift.ToString() );
+            }
+
+
+
+
+
+
+
+
         float price_hike_coeff = 0.1f;
 
         if (  b_has_the_item &&  counter_offers_prepared && counter_offer_chosen )
         {
+
+            // b_gives_amount *= ratio;
+
+            Console.WriteLine(  this.people[b].name + " accepts the offer of " + Content.item_names[b_gives] + ". " 
+            + "They trade " + b_gives_amount.ToString() + Content.item_names[b_gives] + " for it."
+            );
+
 
             a_gives_amount = counter_offers[a_gives] ;
              
@@ -799,6 +940,7 @@ class World
                     Console.WriteLine(" A deal could not be reached: " + this.people[b].name
                      + " doesn't have the item that " + this.people[a].name + " wants.");
                 }
+                return;
             }
 
 
@@ -809,6 +951,7 @@ class World
                 {
                     Console.WriteLine(" A deal could not be reached: " + this.people[a].name + " doesn't have anything to trade.");
                 }
+                return;
             }
 
 
@@ -827,6 +970,8 @@ class World
                 {
                     Console.WriteLine(" A deal could not be reached: " + this.people[b].name+ " doesn't want any of the counter-offers.");
                 }
+
+                return;
             }
 
 
@@ -844,7 +989,7 @@ class World
 
 
 
-    public void gossip(int a, int b, ref Random r)
+    public void gossip(int a, int b)
     {
 
 
@@ -856,7 +1001,7 @@ class World
         // 1. small talk.
         // a says something that falls somewhere on their scale of personality characteristic.
         // b has a reputation adjustment based on the difference between their ideals and what a said.
-        int topic = r.Next(0,Content.n_characteristics);
+        int topic =  Utilities.rng_int( Content.n_characteristics);
         float rep_adjust_b =   Utilities.fast_sigmoid(((1.0f - (this.people[a].personality[topic] - this.people[b].ideals[topic] ))) * const_gossip );
         this.people[b].adjust_likes(a, rep_adjust_b);
 
@@ -920,7 +1065,7 @@ class World
     }
 
 
-      public void update_position_based_on_needs(int a, ref Random r)
+      public void update_position_based_on_needs(int a)
     {
         Vector2 destination = this.people[a].position;
         bool go = false;
@@ -968,7 +1113,7 @@ class World
 
 
 
-        if (can_pay_debt && biggest_payment_importance > greatest_need_priority)
+        if (can_pay_debt)
         {
             go = true;
             destination = this.people[biggest_creditor].position;
@@ -1010,13 +1155,13 @@ class World
             {
                 Console.WriteLine("    Wandering");
             }
-            destination.X += r.NextSingle() - 0.5f;
-            destination.Y += r.NextSingle() - 0.5f;
+            destination.X += Utilities.rng_float() - 0.5f;
+            destination.Y += Utilities.rng_float() - 0.5f;
             go = true;
         }
         else
         {
-            int source = r.Next(0,this.population_size);
+            int source = Utilities.rng_int(this.population_size);
             if (a == this.player && this.print_player)
             {
                 Console.WriteLine("    Asking a random person: " + this.people[source].name);
@@ -1097,13 +1242,18 @@ class World
                     this.adjust_agreement(a, b, item, -amount_to_give);
                 }
             }
+
+            if (this.people[a].agreements[b].Count() == 0 )
+            {
+                this.people[a].agreements.Remove(b);
+            }
         }
 
 
     }
 
 
-    public void person_turn(int a, ref Random r)
+    public void person_turn(int a)
     {
 
             this.people[a].compile_needs(); 
@@ -1122,7 +1272,7 @@ class World
 
 
 
-            int random_start = r.Next(0, this.population_size);
+            int random_start = Utilities.rng_int( this.population_size);
             for (int bhh = 0; bhh < this.population_size; bhh++  ) 
             {
                 int b = (bhh + random_start) % this.population_size;
@@ -1153,17 +1303,17 @@ class World
 
 
                         int b_gives = this.people[a].greatest_need();
-                        float b_gives_amount = this.people[a].greatest_need_quantity();
-
-                        if (b_gives_amount > 0.0f && b_gives != -1)
+                      
+                        if ( b_gives != -1)
                         {
-                            this.trade(a, b, b_gives, b_gives_amount, ref r);
+                            float b_gives_amount = this.people[a].greatest_need_quantity();
+                            this.trade(a, b, b_gives, b_gives_amount);
                         }
                     
                         
                         if (! this.people[a].is_location )
                         {
-                            this.gossip(a, b, ref r);
+                            this.gossip(a, b);
 
                            
                         }
@@ -1176,14 +1326,14 @@ class World
             if (! this.people[a].is_location )
             {
                 this.people[a].bodily_functions();        
-                this.update_position_based_on_needs(a, ref r);
+                this.update_position_based_on_needs(a);
             }
 
     }
 
 
 
-    public void update(ref Random r)
+    public void update()
     {
 
 
@@ -1191,7 +1341,7 @@ class World
         {
 
 
-            this.person_turn(a, ref r);
+            this.person_turn(a);
         }
 
         this.time++;
@@ -1232,10 +1382,10 @@ class Game
 
     public void run()
     {
-        this.world.setup(ref this.random);
+        this.world.setup();
         for (int i = 0; i < 1000; i++)
         {
-            this.world.update(ref this.random);
+            this.world.update();
             Console.WriteLine("Turn {0}", i);
 
             this.world.camera();

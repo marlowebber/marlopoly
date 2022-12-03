@@ -1,5 +1,47 @@
+using System.Runtime.InteropServices;
+using System.Numerics;
+using System;
+
+
 static class Utilities
 {
+
+
+public static int rng_int(int input)
+{
+	Random r = new Random();
+	return r.Next(input);
+}
+
+public static float rng_float()
+{
+
+	Random r = new Random();
+	return r.NextSingle();
+}
+
+public static char rng_char()
+{
+
+	Random r = new Random();
+	return (char)r.Next(255);
+}
+
+public static bool rng_bool()
+{
+
+	Random r = new Random();
+
+	bool result = false;
+	if (r.Next(2) > 0)
+	{
+		result = true;
+	}
+	return result;
+
+
+}
+
 
 public static float abs(float input)
 {
