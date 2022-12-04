@@ -649,13 +649,20 @@ class World
             // the tradeable volume is reduced to the size that the other party actually wants.
             if (this.people[b].needs_quantities.ContainsKey(good))
             {
-                tradeable_volume = this.people[b].needs_quantities[good];
-                a_tradeable_quantities.Add(good, tradeable_volume);
 
-                a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
-                a_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+                float profitability = this.people[b].prices[good]  - this.people[a].prices[good]  ;
 
-                a_tradeable_profitability_to_b.Add(good, this.people[b].prices[good]  - this.people[a].prices[good]   );
+                if (profitability > 0.0f)
+                {
+                    tradeable_volume = this.people[b].needs_quantities[good];
+                    a_tradeable_quantities.Add(good, tradeable_volume);
+
+                    a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
+                    a_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+
+                    a_tradeable_profitability_to_b.Add(good, profitability );
+                }
+
             }
         }
 
@@ -669,37 +676,126 @@ class World
 
             if (this.people[a].needs_quantities.ContainsKey(good))
             {
-                tradeable_volume = this.people[b].needs_quantities[good];
-                b_tradeable_quantities.Add(good, tradeable_volume);
+                float profitability =  this.people[a].prices[good]  - this.people[b].prices[good] ;
+                if (profitability > 0.0f)
+                {
+                    tradeable_volume = this.people[b].needs_quantities[good];
+                    b_tradeable_quantities.Add(good, tradeable_volume);
 
-                b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
-                b_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+                    b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
+                    b_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
 
-                b_tradeable_profitability_to_a.Add(good, this.people[a].prices[good]  - this.people[b].prices[good]   );
+                    b_tradeable_profitability_to_a.Add(good, profitability );
+                }
+            }
+        }
+
+        // each party tries to capitalize as much as possible on the other party's goods while losing as little as possible themselves.
+        // at this point, all things in the 'profitability' list are considered profitable, so they would like to exchange all of them if possible.
+
+        float a_spending_limit = 0.0f; // spending limit is just the sum of the other's profitability list, 
+        float b_spending_limit = 0.0f; // clipped to the total value of the least-valuable of the two profitability lists.
+                                       // this can be stated as, "they let the other have as much as they think they're getting".
+
+        foreach (int good in b_tradeable_profitability_to_a.Keys)
+        {
+            b_spending_limit += b_tradeable_profitability_to_a[good];
+        }
+        foreach (int good in a_tradeable_profitability_to_b.Keys)
+        {
+            a_spending_limit += a_tradeable_profitability_to_b[good];
+        }
+
+        if (a_spending_limit > b_spending_limit)
+        {
+            a_spending_limit = b_spending_limit;
+        }
+        else
+        {
+            b_spending_limit = a_spending_limit;
+        }
+
+        while (true)
+        {
+            // A is getting the goods in order from most to least profitable.
+            int most_profitable = -1;
+            float highest_profitability = 0.0f;
+
+            foreach (int good in b_tradeable_profitability_to_a.Keys)
+            {
+                if (b_tradeable_profitability_to_a[good] > highest_profitability)
+                {
+                    highest_profitability = b_tradeable_profitability_to_a[good];
+                    most_profitable = good;
+                }
+            }
+
+            if (most_profitable != -1)
+            {
+                float value_of_this_trade = b_tradeable_values_to_b[most_profitable];
+                float quantity_of_this_trade = b_tradeable_quantities[most_profitable];
+                
+                if (value_of_this_trade > a_spending_limit)
+                {
+                    float ratio_you_can_have = a_spending_limit / value_of_this_trade;
+                    quantity_of_this_trade *= ratio_you_can_have;
+                    value_of_this_trade    *= ratio_you_can_have;
+                }
+
+                // exchange the goods here.
+                this.people[b].owns[most_profitable] -= quantity_of_this_trade;
+                this.people[a].owns[most_profitable] += quantity_of_this_trade;
+
+                a_spending_limit -= value_of_this_trade;
+            }
+
+            if (most_profitable == -1 || a_spending_limit <= 0.0f)
+            {
+                break;
             }
         }
 
 
-        // loop over the tradeable goods as many times as necessary.
-        // each time, the people select the most profitable good from the other, and exchange it,
-        // until one of them runs out of stuff to trade
-         
-        
-        
 
+        while (true)
+        {
+            // B is getting the goods in order from most to least profitable.
+            int most_profitable = -1;
+            float highest_profitability = 0.0f;
 
+            foreach (int good in a_tradeable_profitability_to_b.Keys)
+            {
+                if (a_tradeable_profitability_to_b[good] > highest_profitability)
+                {
+                    highest_profitability = a_tradeable_profitability_to_b[good];
+                    most_profitable = good;
+                }
+            }
 
-        // B selects an agreeable counter offer, if there is one, 
+            if (most_profitable != -1)
+            {
+                float value_of_this_trade = a_tradeable_values_to_a[most_profitable];
+                float quantity_of_this_trade = a_tradeable_quantities[most_profitable];
+                
+                if (value_of_this_trade > b_spending_limit)
+                {
+                    float ratio_you_can_have = b_spending_limit / value_of_this_trade;
+                    quantity_of_this_trade *= ratio_you_can_have;
+                    value_of_this_trade    *= ratio_you_can_have;
+                }
 
-        // and then B gives A what they feel is an appropriate quantity of the original item.
+                // exchange the goods here.
+                this.people[a].owns[most_profitable] -= quantity_of_this_trade;
+                this.people[b].owns[most_profitable] += quantity_of_this_trade;
 
-        // if the trade is scaled down by B, both parties get a rep penalty
-        
-        // if the original trade was accepted, both parties get a rep bonus
+                b_spending_limit -= value_of_this_trade;
+            }
 
-        
-
-
+            if (most_profitable == -1 || b_spending_limit <= 0.0f)
+            {
+                break;
+            }
+        }
 
 
     }
@@ -1302,13 +1398,13 @@ class World
 
 
 
-                        int b_gives = this.people[a].greatest_need();
+                        // int b_gives = this.people[a].greatest_need();
                       
-                        if ( b_gives != -1)
-                        {
-                            float b_gives_amount = this.people[a].greatest_need_quantity();
-                            this.trade(a, b, b_gives, b_gives_amount);
-                        }
+                        // if ( b_gives != -1)
+                        // {
+                            // float b_gives_amount = this.people[a].greatest_need_quantity();
+                            this.trade(a, b);
+                        // }
                     
                         
                         if (! this.people[a].is_location )
