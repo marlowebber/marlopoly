@@ -653,26 +653,61 @@ class World
 
 
 
-    public void trade(int a, int b)
-    {
+    public void trade(int a, int b, int b_gives, float b_gives_amount)
+    {   
+
+         foreach (int good in this.people[a].owns.Keys)
+        {
+            this.exchange_price_information(a, b, good);
+        }
+         foreach (int good in this.people[b].owns.Keys)
+        {     
+            this.exchange_price_information(a, b, good);
+        }
 
 
+
+        float p = this.people[b].prices[b_gives] * b_gives_amount;
+        if (a == this.player || b == this.player)
+        {
+            Console.WriteLine(this.people[a].name + " wants " + this.people[b].name + " to give them " + b_gives_amount.ToString() + " " + Content.item_names[b_gives].ToString()
+            + ", which to " + this.people[b].name + " is worth " +  p.ToString() );
+            Console.ReadKey(true);
+        }
         Dictionary<int, float> a_tradeable_quantities = new Dictionary<int, float>();
-        Dictionary<int, float> b_tradeable_quantities = new Dictionary<int, float>();
+        // Dictionary<int, float> b_tradeable_quantities = new Dictionary<int, float>();
         
         Dictionary<int, float> a_tradeable_values_to_a = new Dictionary<int, float>();
-        Dictionary<int, float> b_tradeable_values_to_a = new Dictionary<int, float>();
+        // Dictionary<int, float> b_tradeable_values_to_a = new Dictionary<int, float>();
         Dictionary<int, float> a_tradeable_values_to_b = new Dictionary<int, float>();
-        Dictionary<int, float> b_tradeable_values_to_b = new Dictionary<int, float>();
+        // Dictionary<int, float> b_tradeable_values_to_b = new Dictionary<int, float>();
 
 
-        Dictionary<int, float> b_tradeable_profitability_to_a = new Dictionary<int, float>();
+        // Dictionary<int, float> b_tradeable_profitability_to_a = new Dictionary<int, float>();
         Dictionary<int, float> a_tradeable_profitability_to_b = new Dictionary<int, float>();
-        
+
+
+        float amount_b_is_willing_to_give = 0.0f;
+
+        if (this.people[b].owns.ContainsKey(b_gives) )
+        {
+           amount_b_is_willing_to_give =   this.people[b].owns[b_gives] ;
+        }
+
+        if (this.people[b].needs_quantities.ContainsKey(b_gives) )
+        {
+            amount_b_is_willing_to_give = this.people[b].owns[b_gives] - this.people[b].needs_quantities[b_gives];
+        }
+
+        if (amount_b_is_willing_to_give == 0.0f)
+        {
+            Console.WriteLine( this.people[b].name + " doesn't have any " + Content.item_names[b_gives] + " to spare." );
+            return;
+        }
 
         foreach (int good in this.people[a].owns.Keys)
         {
-            this.exchange_price_information(a, b, good);
+            // this.exchange_price_information(a, b, good);
 
             float tradeable_volume = this.people[a].owns[good];
             if (this.people[a].needs_quantities.ContainsKey(good) )
@@ -681,127 +716,168 @@ class World
             }
 
             // the tradeable volume is reduced to the size that the other party actually wants.
-            if (this.people[b].needs_quantities.ContainsKey(good))
-            {
+            // if (this.people[b].needs_quantities.ContainsKey(good))
+            // {
 
                 float profitability = this.people[b].prices[good]  - this.people[a].prices[good]  ;
 
-                if (profitability > 0.0f)
+                if (profitability > 0.0f && tradeable_volume > 0.0f)
                 {
-                    if (this.people[b].needs_quantities[good] < tradeable_volume)
-                    {
-                        tradeable_volume = this.people[b].needs_quantities[good];
-                    }
+                    // if (this.people[b].needs_quantities[good] < tradeable_volume)
+                    // {
+                    //     tradeable_volume = this.people[b].needs_quantities[good];
+                    // }
 
                     a_tradeable_quantities.Add(good, tradeable_volume);
-
                     a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
                     a_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
-
                     a_tradeable_profitability_to_b.Add(good, profitability );
                 }
 
-            }
+            // }
         }
 
-        foreach (int good in this.people[b].owns.Keys)
+        // foreach (int good in this.people[b].owns.Keys)
+        // {
+        //     if (good != b_gives) { continue; }
+            
+        //     // this.exchange_price_information(a, b, good);
+
+        //     float tradeable_volume = this.people[b].owns[good];
+        //     if (this.people[b].needs_quantities.ContainsKey(good) )
+        //     {
+        //         tradeable_volume -= this.people[b].needs_quantities[good];
+        //     }
+
+        //     if (tradeable_volume > b_gives_amount)
+        //     {
+        //         tradeable_volume = b_gives_amount;
+        //     }
+
+
+        //     // if (this.people[a].needs_quantities.ContainsKey(good))
+        //     // {
+        //         float profitability =  this.people[a].prices[good]  - this.people[b].prices[good] ;
+        //         if (profitability > 0.0f)
+        //         {
+        //             // if (this.people[a].needs_quantities[good] < tradeable_volume)
+        //             // {
+        //             //     tradeable_volume = this.people[a].needs_quantities[good];
+        //             // }
+
+
+
+        //             b_tradeable_quantities.Add(good, tradeable_volume);
+
+        //             b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
+        //             b_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
+
+        //             b_tradeable_profitability_to_a.Add(good, profitability );
+        //         }
+        //     // }
+        // }
+
+        if (a == this.player || b == this.player)
         {
-
-            this.exchange_price_information(a, b, good);
-
-            float tradeable_volume = this.people[b].owns[good];
-            if (this.people[b].needs_quantities.ContainsKey(good) )
+            // foreach (int good in b_tradeable_profitability_to_a.Keys)
+            // {
+            //     Console.WriteLine( this.people[b].name + " has " + Content.item_names[good] + " that " + this.people[a].name + " wants." );
+            // }
+            foreach (int good in a_tradeable_profitability_to_b.Keys)
             {
-                tradeable_volume -= this.people[b].needs_quantities[good];
+                float egque = this.people[a].prices[good] * a_tradeable_quantities[good];
+                Console.WriteLine( this.people[a].name + " has " + a_tradeable_quantities[good].ToString() + " " + Content.item_names[good] + " that " + this.people[b].name + " wants"  
+                + ", which to " +  this.people[a].name + " is worth " + egque.ToString()
+                 );
             }
 
-            if (this.people[a].needs_quantities.ContainsKey(good))
-            {
-                float profitability =  this.people[a].prices[good]  - this.people[b].prices[good] ;
-                if (profitability > 0.0f)
-                {
-                    if (this.people[a].needs_quantities[good] < tradeable_volume)
-                    {
-                        tradeable_volume = this.people[a].needs_quantities[good];
-                    }
-
-
-
-                    b_tradeable_quantities.Add(good, tradeable_volume);
-
-                    b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
-                    b_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
-
-                    b_tradeable_profitability_to_a.Add(good, profitability );
-                }
-            }
         }
+
 
         // each party tries to capitalize as much as possible on the other party's goods while losing as little as possible themselves.
         // at this point, all things in the 'profitability' list are considered profitable, so they would like to exchange all of them if possible.
 
-        float a_spending_limit = 0.0f; // spending limit is just the sum of the other's profitability list, 
-        float b_spending_limit = 0.0f; // clipped to the total value of the least-valuable of the two profitability lists.
+        // float a_spending_limit = p;//0.0f; // spending limit is just the sum of the other's profitability list, 
+        float b_spending_limit = p;//0.0f; // clipped to the total value of the least-valuable of the two profitability lists.
                                        // this can be stated as, "they let the other have as much as they think they're getting".
 
-        foreach (int good in b_tradeable_profitability_to_a.Keys)
+        // foreach (int good in b_tradeable_profitability_to_a.Keys)
+        // {
+        //     b_spending_limit += b_tradeable_profitability_to_a[good];
+        // }
+
+        // foreach (int good in a_tradeable_profitability_to_b.Keys)
+        // {
+        //     // a_spending_limit += a_tradeable_profitability_to_b[good];
+        // }
+
+        // if (a_spending_limit > b_spending_limit)
+        // {
+        //     a_spending_limit = b_spending_limit;
+        // }
+        // else
+        // {
+        //     b_spending_limit = a_spending_limit;
+        // }
+
+        // if (a_spending_limit == 0.0f || b_spending_limit == 0.0f) { return; }
+
+        if (a == this.player || b == this.player)
         {
-            b_spending_limit += b_tradeable_profitability_to_a[good];
-        }
-        foreach (int good in a_tradeable_profitability_to_b.Keys)
-        {
-            a_spending_limit += a_tradeable_profitability_to_b[good];
+            Console.WriteLine("They are both willing to exchange goods worth " + b_spending_limit.ToString());
         }
 
-        if (a_spending_limit > b_spending_limit)
-        {
-            a_spending_limit = b_spending_limit;
-        }
-        else
-        {
-            b_spending_limit = a_spending_limit;
-        }
+        // while (true)
+        // {
+        //     // A is getting the goods in order from most to least profitable.
+        //     int most_profitable = -1;
+        //     float highest_profitability = 0.0f;
 
-        while (true)
-        {
-            // A is getting the goods in order from most to least profitable.
-            int most_profitable = -1;
-            float highest_profitability = 0.0f;
+        //     foreach (int good in b_tradeable_profitability_to_a.Keys)
+        //     {
+        //         if (b_tradeable_profitability_to_a[good] > highest_profitability)
+        //         {
+        //             highest_profitability = b_tradeable_profitability_to_a[good];
+        //             most_profitable = good;
+        //         }
+        //     }
 
-            foreach (int good in b_tradeable_profitability_to_a.Keys)
-            {
-                if (b_tradeable_profitability_to_a[good] > highest_profitability)
-                {
-                    highest_profitability = b_tradeable_profitability_to_a[good];
-                    most_profitable = good;
-                }
-            }
-
-            if (most_profitable != -1)
-            {
-                float value_of_this_trade = b_tradeable_values_to_b[most_profitable];
-                float quantity_of_this_trade = b_tradeable_quantities[most_profitable];
+        //     if (most_profitable != -1)
+        //     {
+        //         float value_of_this_trade = b_tradeable_values_to_b[most_profitable];
+        //         float quantity_of_this_trade = b_tradeable_quantities[most_profitable];
                 
-                if (value_of_this_trade > a_spending_limit)
-                {
-                    float ratio_you_can_have = a_spending_limit / value_of_this_trade;
-                    quantity_of_this_trade *= ratio_you_can_have;
-                    value_of_this_trade    *= ratio_you_can_have;
-                }
+        //         // if (value_of_this_trade > a_spending_limit)
+        //         // {
+        //         //     float ratio_you_can_have = a_spending_limit / value_of_this_trade;
+        //         //     quantity_of_this_trade *= ratio_you_can_have;
+        //         //     value_of_this_trade    *= ratio_you_can_have;
+        //         // }
 
-                // exchange the goods here.
-                this.people[b].owns[most_profitable] -= quantity_of_this_trade;
-                this.people[a].owns[most_profitable] += quantity_of_this_trade;
+        //         // exchange the goods here.
+        //         this.people[b].owns[most_profitable] -= quantity_of_this_trade;
+        //         this.people[a].owns[most_profitable] += quantity_of_this_trade;
 
-                a_spending_limit -= value_of_this_trade;
-                b_tradeable_profitability_to_a.Remove(most_profitable);
-            }
+        //         // a_spending_limit -= value_of_this_trade;
+        //         b_tradeable_profitability_to_a.Remove(most_profitable);
 
-            if (most_profitable == -1 || a_spending_limit <= 0.0f)
-            {
-                break;
-            }
-        }
+        //         if (a == this.player || b == this.player)
+        //         {
+        //             Console.WriteLine( this.people[a].name +  " got " + quantity_of_this_trade.ToString() + " " + Content.item_names[most_profitable] );
+        //         }
+        //     }
+
+        //     if (most_profitable == -1 
+        //     // || a_spending_limit <= 0.0f
+        //     )
+        //     {
+        //         break;
+        //     }
+        // }
+
+
+
+        // this.people
 
 
 
@@ -838,12 +914,35 @@ class World
 
                 b_spending_limit -= value_of_this_trade;
                 a_tradeable_profitability_to_b.Remove(most_profitable);
+
+                if (a == this.player || b == this.player)
+                {
+                    Console.WriteLine( this.people[b].name +  " got " + quantity_of_this_trade.ToString() + " " + Content.item_names[most_profitable] );
+                }
             }
 
             if (most_profitable == -1 || b_spending_limit <= 0.0f)
             {
                 break;
             }
+        }
+
+
+
+                this.people[a].owns[b_gives] -= b_gives_amount;
+                this.people[b].owns[b_gives] += b_gives_amount;
+
+                if (a == this.player || b == this.player)
+                {
+                    Console.WriteLine( this.people[a].name +  " got " + b_gives_amount.ToString() + " " + Content.item_names[b_gives] );
+                }
+                
+
+
+
+           if (a == this.player || b == this.player)
+        {
+            Console.ReadKey();
         }
 
 
@@ -1447,12 +1546,17 @@ class World
 
 
 
-                        // int b_gives = this.people[a].greatest_need();
+                        int b_gives = this.people[a].greatest_need();
                       
-                        // if ( b_gives != -1)
+                        if ( b_gives != -1)
+                        {
+                            float b_gives_amount = this.people[a].greatest_need_quantity();
+                            this.trade(a,b, b_gives, b_gives_amount);
+                        }
+                        // else
                         // {
-                            // float b_gives_amount = this.people[a].greatest_need_quantity();
-                            this.trade(a, b);
+                        //     float b_gives_amount = this.people[a].greatest_need_quantity();
+                        //     this.trade_for_specific_item(a, b, b_gives, b_gives_amount);
                         // }
                     
                         
