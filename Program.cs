@@ -277,7 +277,7 @@ class World
 
     int population_size = 0;
 
-    int world_size = 0;
+    int world_size = 80;
 
     int player = 36;
 
@@ -368,20 +368,48 @@ class World
 
    public void camera()
     {
-        int viewport_x = 160;
-        int viewport_y = 16;
+        int viewport_x = 80;
+        int viewport_y = 24;
 
-        for (int y = 0; y < viewport_y; ++y)
+        for (int vy = 0; vy < viewport_y; ++vy)
         {
             string row = "";
-            for (int x = 0; x < viewport_x; ++x)
+            for (int vx = 0; vx < viewport_x; ++vx)
             {
+
+                int x = (int)this.people[this.player].position.X -(viewport_x/2) + vx;
+                int y = (int)this.people[this.player].position.Y -(viewport_y/2) + vy; 
+
+
                 char here = '_';
+
+                // draw a crosshair over the player position
+                if (
+                   ( y == (((int)this.people[ this.player ] .position.Y) + 1)  
+                    || y == (((int)this.people[ this.player ] .position.Y) - 1)  )
+                    && x == (int)this.people[ this.player ] .position.X 
+                    ) 
+                {
+                    here = '|';
+                }
+                if (
+                    (x == (((int)this.people[ this.player ] .position.X) + 1)  
+                    || x == (((int)this.people[ this.player ] .position.X) - 1)  )
+                    && y == (int)this.people[ this.player ] .position.Y 
+
+                    ) 
+                {
+                    here = '-';
+                }
+
+
                 for (int k = 0; k < population_size; ++k)
                 {
                     if ((int)this.people[k].position.X == x && (int)this.people[k].position.Y == y )
                     {
                         here = this.people[k].icon;
+
+
 
                         if (this.people[k].chatted_this_turn)
                         {
@@ -391,6 +419,10 @@ class World
                         {
                             here = '$';
                         }
+
+
+
+
 
                         break;
                     }
@@ -640,6 +672,8 @@ class World
 
         foreach (int good in this.people[a].owns.Keys)
         {
+            this.exchange_price_information(a, b, good);
+
             float tradeable_volume = this.people[a].owns[good];
             if (this.people[a].needs_quantities.ContainsKey(good) )
             {
@@ -654,7 +688,11 @@ class World
 
                 if (profitability > 0.0f)
                 {
-                    tradeable_volume = this.people[b].needs_quantities[good];
+                    if (this.people[b].needs_quantities[good] < tradeable_volume)
+                    {
+                        tradeable_volume = this.people[b].needs_quantities[good];
+                    }
+
                     a_tradeable_quantities.Add(good, tradeable_volume);
 
                     a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
@@ -668,6 +706,9 @@ class World
 
         foreach (int good in this.people[b].owns.Keys)
         {
+
+            this.exchange_price_information(a, b, good);
+
             float tradeable_volume = this.people[b].owns[good];
             if (this.people[b].needs_quantities.ContainsKey(good) )
             {
@@ -679,7 +720,13 @@ class World
                 float profitability =  this.people[a].prices[good]  - this.people[b].prices[good] ;
                 if (profitability > 0.0f)
                 {
-                    tradeable_volume = this.people[b].needs_quantities[good];
+                    if (this.people[a].needs_quantities[good] < tradeable_volume)
+                    {
+                        tradeable_volume = this.people[a].needs_quantities[good];
+                    }
+
+
+
                     b_tradeable_quantities.Add(good, tradeable_volume);
 
                     b_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
@@ -747,6 +794,7 @@ class World
                 this.people[a].owns[most_profitable] += quantity_of_this_trade;
 
                 a_spending_limit -= value_of_this_trade;
+                b_tradeable_profitability_to_a.Remove(most_profitable);
             }
 
             if (most_profitable == -1 || a_spending_limit <= 0.0f)
@@ -789,6 +837,7 @@ class World
                 this.people[b].owns[most_profitable] += quantity_of_this_trade;
 
                 b_spending_limit -= value_of_this_trade;
+                a_tradeable_profitability_to_b.Remove(most_profitable);
             }
 
             if (most_profitable == -1 || b_spending_limit <= 0.0f)
