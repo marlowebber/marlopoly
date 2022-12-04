@@ -525,6 +525,10 @@ class World
         // A will owe X amount of stuff to B.
         // A understands that they owe B, and B understands that A owes them.
 
+        // a negative value agreement means you can have that thing from that person.
+
+        // a positive value agreement means you have to give that thing to that person.
+
         this.introduce(a,b);
         this.exchange_price_information(a, b, item);
 
@@ -565,12 +569,29 @@ class World
             this.people[a].agreements[b][item] += quantity;
             this.people[b].agreements[a][item] -= quantity;
 
+            if (a == this.player || b == this.player)
+            {
+                if (quantity < 0.0f)
+                {
+      Console.WriteLine(this.people[a].name + " gave " + this.people[b].name + " " + Utilities.abs(quantity).ToString() + " " + Content.item_names[item]);
+           
+                }
+                else
+                {
+      Console.WriteLine(this.people[b].name + " gave " + this.people[a].name + " " + quantity.ToString() + " " + Content.item_names[item]);
+           
+                }
+           }
+
             if (this.people[a].agreements[b][item] ==0.0f || this.people[b].agreements[a][item] == 0.0f)
             {
                 this.people[a].agreements[b].Remove(item);
                 this.people[b].agreements[a].Remove(item);
             } 
         }
+
+        this.people[a].compile_needs();
+        this.people[b].compile_needs();
 
     }
 
@@ -732,6 +753,11 @@ class World
                     a_tradeable_values_to_a.Add(good, tradeable_volume * this.people[a].prices[good]);
                     a_tradeable_values_to_b.Add(good, tradeable_volume * this.people[b].prices[good]);
                     a_tradeable_profitability_to_b.Add(good, profitability );
+
+                    // if (a == this.player || b == this.player)
+                    // {
+                    //     Console.WriteLine("Counter offer: up to " + a_tradeable_quantities[good].ToString() + " " + Content.item_names[good]);
+                    // }
                 }
 
             // }
@@ -801,6 +827,20 @@ class World
         float b_spending_limit = p;//0.0f; // clipped to the total value of the least-valuable of the two profitability lists.
                                        // this can be stated as, "they let the other have as much as they think they're getting".
 
+
+
+        float a_tradeable_total = 0.0f;
+
+        foreach (int item in a_tradeable_values_to_a.Keys)
+        {
+            a_tradeable_total += a_tradeable_values_to_a[item];
+        }
+
+        if (b_spending_limit > a_tradeable_total)
+        {
+            b_spending_limit = a_tradeable_total;
+        }
+
         // foreach (int good in b_tradeable_profitability_to_a.Keys)
         // {
         //     b_spending_limit += b_tradeable_profitability_to_a[good];
@@ -825,6 +865,13 @@ class World
         if (a == this.player || b == this.player)
         {
             Console.WriteLine("They are both willing to exchange goods worth " + b_spending_limit.ToString());
+        }
+
+
+        float b_gives_value_to_b = b_gives_amount * this.people[b].prices[b_gives];
+        if (b_gives_value_to_b > b_spending_limit)
+        {
+            b_gives_amount *= (b_spending_limit / b_gives_value_to_b);
         }
 
         // while (true)
@@ -929,8 +976,8 @@ class World
 
 
 
-                this.people[a].owns[b_gives] -= b_gives_amount;
-                this.people[b].owns[b_gives] += b_gives_amount;
+                this.people[a].owns[b_gives] += b_gives_amount;
+                this.people[b].owns[b_gives] -= b_gives_amount;
 
                 if (a == this.player || b == this.player)
                 {
@@ -1336,6 +1383,7 @@ class World
                     {
                         if (this.people[a].likes[creditor] > biggest_payment_importance)
                         {
+                            
                             biggest_payment_importance = this.people[a].likes[creditor];
                             can_pay_debt = true;
                             biggest_creditor = creditor;
@@ -1472,18 +1520,25 @@ class World
         {
             foreach (int item in this.people[a].agreements[b].Keys)
             {
-                if (this.people[a].owns[item] > 0.0f)
+
+                if (this.people[a].agreements[b][item] > 0.0f) // if you are the person who owes, do the repaying and such.
                 {
-
-                    float amount_to_give = this.people[a].agreements[b][item];
-
-                    if (amount_to_give > this.people[a].owns[item])
+                    if (this.people[a].owns[item] > 0.0f)
                     {
-                        amount_to_give = this.people[a].owns[item];
-                    }
+                        float amount_to_give = this.people[a].agreements[b][item];
 
-                    // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
-                    this.adjust_agreement(a, b, item, -amount_to_give);
+                        if (amount_to_give > this.people[a].owns[item])
+                        {
+                            amount_to_give = this.people[a].owns[item];
+                        }
+
+                        // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
+                        this.adjust_agreement(a, b, item, -amount_to_give);
+
+                        this.people[b].owns[item] += amount_to_give;
+                        this.people[a].owns[item] -= amount_to_give;
+                        
+                    }
                 }
             }
 
