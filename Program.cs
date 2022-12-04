@@ -569,8 +569,8 @@ class World
         else if (exists_a && exists_b)
         {
             // they both agree on an existing agreement; adjust the quantity by the indicated amount.
-            this.people[a].agreements[b][item] += quantity;
-            this.people[b].agreements[a][item] -= quantity;
+            this.people[a].agreements[b][item] -= quantity;
+            this.people[b].agreements[a][item] += quantity;
 
             if (a == this.player || b == this.player)
             {
@@ -691,7 +691,8 @@ class World
 
 
 
-        float p = this.people[b].prices[b_gives] * b_gives_amount;
+        float p  = this.people[b].prices[b_gives] * b_gives_amount;
+
         if (a == this.player || b == this.player)
         {
             Console.WriteLine(this.people[a].name + " wants " + this.people[b].name + " to give them " + b_gives_amount.ToString() + " " + Content.item_names[b_gives].ToString()
@@ -723,11 +724,33 @@ class World
             amount_b_is_willing_to_give = this.people[b].owns[b_gives] - this.people[b].needs_quantities[b_gives];
         }
 
-        if (amount_b_is_willing_to_give == 0.0f)
+
+
+       
+        if (amount_b_is_willing_to_give <= 0.0f)
         {
-            Console.WriteLine( this.people[b].name + " doesn't have any " + Content.item_names[b_gives] + " to spare." );
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[b].name + " doesn't have any " + Content.item_names[b_gives] + " to spare." );
+            }
+            if (this.people[a].sources.ContainsKey(b_gives) )
+            {
+               if ( this.people[a].sources[b_gives] == b)
+               {
+                    this.refer_to_source(a, b, b_gives);
+               }
+            } 
             return;
         }
+        else
+        {
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[b].name + " has " + amount_b_is_willing_to_give.ToString() + " "  + Content.item_names[b_gives] + " to trade." );
+            }
+        }
+
+      
 
         foreach (int good in this.people[a].owns.Keys)
         {
@@ -856,7 +879,7 @@ class World
         // float a_spending_limit = p;//0.0f; // spending limit is just the sum of the other's profitability list, 
         float b_spending_limit = p;//0.0f; // clipped to the total value of the least-valuable of the two profitability lists.
                                        // this can be stated as, "they let the other have as much as they think they're getting".
-
+        
 
 
         float a_tradeable_total = 0.0f;
@@ -893,11 +916,10 @@ class World
         // }
 
         // if (a_spending_limit == 0.0f || b_spending_limit == 0.0f) { return; }
-    float final_spending_limit = b_spending_limit;
-        if (a == this.player || b == this.player)
-        {
-            Console.WriteLine("They are both willing to exchange goods worth " + final_spending_limit.ToString());
-        }
+        // if (a == this.player || b == this.player)
+        // {
+        //     Console.WriteLine("They are both willing to exchange goods worth " + final_spending_limit.ToString());
+        // }
 
 
         float b_gives_value_to_b = b_gives_amount * this.people[b].prices[b_gives];
@@ -905,6 +927,10 @@ class World
         {
             b_gives_amount *= (b_spending_limit / b_gives_value_to_b);
         }
+
+
+
+
 
         // while (true)
         // {
@@ -1036,10 +1062,16 @@ class World
                 }
                 
 
+        float how_much_b_expected_to_get = b_gives_amount * this.people[b].prices[b_gives]; 
+        float how_much_a_expected_to_get = b_gives_amount * this.people[a].prices[b_gives];
+
+        
+
+
             float a_received_value = b_gives_amount * this.people[a].prices[b_gives];
 
-            float rep_bonus_a_about_b = a_received_value - final_spending_limit;
-            float rep_bonus_b_about_a = b_received_value - final_spending_limit;
+            float rep_bonus_a_about_b = a_received_value - how_much_a_expected_to_get;
+            float rep_bonus_b_about_a = b_received_value - how_much_b_expected_to_get;
 
 
             if (a == this.player || b == this.player)
@@ -1589,25 +1621,36 @@ class World
             foreach (int item in this.people[a].agreements[b].Keys)
             {
 
-                if (this.people[a].agreements[b][item] > 0.0f) // if you are the person who owes, do the repaying and such.
-                {
-                    if (this.people[a].owns[item] > 0.0f)
-                    {
-                        float amount_to_give = this.people[a].agreements[b][item];
+                // if (this.people[a].agreements[b][item] > 0.0f) // if you are the person who owes, do the repaying and such.
+                // {
+                    float amount_to_give = amount_to_give = this.people[a].agreements[b][item];
 
-                        if (amount_to_give > this.people[a].owns[item])
+                    if (amount_to_give > 0.0f)
+                    {
+                       
+                        if ( amount_to_give > this.people[a].owns[item])
                         {
-                            amount_to_give = this.people[a].owns[item];
+                            amount_to_give =  this.people[a].owns[item];
                         }
+                    }
+                    else if (amount_to_give < 0.0f)
+                    {
+                    if ( Utilities.abs(amount_to_give) > this.people[b].owns[item])
+                        {
+                            amount_to_give =  this.people[b].owns[item];
+                        }
+                    }
+
+                        amount_to_give *= -1;
 
                         // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
-                        this.adjust_agreement(a, b, item, -amount_to_give);
+                        this.adjust_agreement(a, b, item, amount_to_give);
 
                         this.people[b].owns[item] += amount_to_give;
                         this.people[a].owns[item] -= amount_to_give;
                         
-                    }
-                }
+                    // }
+                // }
             }
 
             if (this.people[a].agreements[b].Count() == 0 )
