@@ -92,6 +92,9 @@ public char icon;
     }
 
 
+
+
+
     public int best_friend()
     {
         int bf = -1;
@@ -573,12 +576,12 @@ class World
             {
                 if (quantity < 0.0f)
                 {
-      Console.WriteLine(this.people[a].name + " gave " + this.people[b].name + " " + Utilities.abs(quantity).ToString() + " " + Content.item_names[item]);
+      Console.WriteLine(this.people[a].name + " gave " + this.people[b].name + " " + Utilities.abs(quantity).ToString() + " " + Content.item_names[item] + ", as agreed.");
            
                 }
                 else
                 {
-      Console.WriteLine(this.people[b].name + " gave " + this.people[a].name + " " + quantity.ToString() + " " + Content.item_names[item]);
+      Console.WriteLine(this.people[b].name + " gave " + this.people[a].name + " " + quantity.ToString() + " " + Content.item_names[item]+ ", as agreed."  );
            
                 }
            }
@@ -730,10 +733,37 @@ class World
         {
             // this.exchange_price_information(a, b, good);
 
+
+
+
+
             float tradeable_volume = this.people[a].owns[good];
             if (this.people[a].needs_quantities.ContainsKey(good) )
             {
                 tradeable_volume -= this.people[a].needs_quantities[good];
+            }
+
+
+            if (tradeable_volume > 0.0f)
+            {
+                 // update B's source information.
+                if (!this.people[b].sources.ContainsKey(good))
+                {
+                    this.people[b].sources.Add(good, a);   
+                }
+                int b_source = this.people[b].sources[good];
+
+
+                if (!this.people[b_source].prices.ContainsKey(good))
+                {
+                    this.exchange_price_information(b_source, b, good);
+                }
+
+                if (this.people[a].prices[good] < this.people[b_source].prices[good])
+                {
+                    this.people[b].sources[good] = a;
+                }
+
             }
 
             // the tradeable volume is reduced to the size that the other party actually wants.
@@ -841,6 +871,8 @@ class World
             b_spending_limit = a_tradeable_total;
         }
 
+
+
         // foreach (int good in b_tradeable_profitability_to_a.Keys)
         // {
         //     b_spending_limit += b_tradeable_profitability_to_a[good];
@@ -861,10 +893,10 @@ class World
         // }
 
         // if (a_spending_limit == 0.0f || b_spending_limit == 0.0f) { return; }
-
+    float final_spending_limit = b_spending_limit;
         if (a == this.player || b == this.player)
         {
-            Console.WriteLine("They are both willing to exchange goods worth " + b_spending_limit.ToString());
+            Console.WriteLine("They are both willing to exchange goods worth " + final_spending_limit.ToString());
         }
 
 
@@ -927,6 +959,7 @@ class World
         // this.people
 
 
+        float b_received_value = 0.0f;
 
         while (true)
         {
@@ -961,6 +994,24 @@ class World
 
                 b_spending_limit -= value_of_this_trade;
                 a_tradeable_profitability_to_b.Remove(most_profitable);
+                b_received_value += value_of_this_trade;
+
+                // update A's source information.
+                if (!this.people[a].sources.ContainsKey(b_gives))
+                {
+                    this.people[a].sources.Add(b_gives, b);   
+                }
+                int a_source = this.people[a].sources[b_gives];
+                if (!this.people[a_source].prices.ContainsKey(b_gives))
+                {
+                    this.exchange_price_information(a_source, b, b_gives);
+                }
+                if (this.people[b].prices[b_gives] < this.people[a_source].prices[b_gives])
+                {
+                    this.people[a].sources[b_gives] = b;
+                }
+
+
 
                 if (a == this.player || b == this.player)
                 {
@@ -985,6 +1036,23 @@ class World
                 }
                 
 
+            float a_received_value = b_gives_amount * this.people[a].prices[b_gives];
+
+            float rep_bonus_a_about_b = a_received_value - final_spending_limit;
+            float rep_bonus_b_about_a = b_received_value - final_spending_limit;
+
+
+            if (a == this.player || b == this.player)
+                {
+
+                    Console.WriteLine("In total, " + this.people[b].name + " thinks they received " + b_received_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_b_about_a.ToString());
+                    Console.WriteLine("In total, " + this.people[a].name + " thinks they received " + a_received_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_a_about_b.ToString());
+
+                }
+
+
+            this.people[a].likes[b] += rep_bonus_a_about_b;
+            this.people[b].likes[a] += rep_bonus_b_about_a;
 
 
            if (a == this.player || b == this.player)
