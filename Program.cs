@@ -569,8 +569,8 @@ class World
         else if (exists_a && exists_b)
         {
             // they both agree on an existing agreement; adjust the quantity by the indicated amount.
-            this.people[a].agreements[b][item] -= quantity;
-            this.people[b].agreements[a][item] += quantity;
+            this.people[a].agreements[b][item] += quantity;
+            this.people[b].agreements[a][item] -= quantity;
 
             if (a == this.player || b == this.player)
             {
@@ -896,6 +896,27 @@ class World
 
 
 
+
+
+
+        // if a can't trade anything to b in return, refer to b's source
+        if (a_tradeable_total <= 0.0f)
+        {
+            if (a == this.player || b == this.player)
+            {
+                Console.WriteLine( this.people[a].name + " doesn't have anything that " + this.people[b].name + " wants." );
+            }
+            if (this.people[a].sources.ContainsKey(b_gives) )
+            {
+               if ( this.people[a].sources[b_gives] == b)
+               {
+                    this.refer_to_source(a, b, b_gives);
+               }
+            } 
+            return;
+        }
+
+
         // foreach (int good in b_tradeable_profitability_to_a.Keys)
         // {
         //     b_spending_limit += b_tradeable_profitability_to_a[good];
@@ -929,6 +950,7 @@ class World
         }
 
 
+        float a_received_value = b_gives_amount * this.people[a].prices[b_gives];
 
 
 
@@ -986,6 +1008,7 @@ class World
 
 
         float b_received_value = 0.0f;
+        float a_gave_value = 0.0f;
 
         while (true)
         {
@@ -1004,23 +1027,29 @@ class World
 
             if (most_profitable != -1)
             {
-                float value_of_this_trade = a_tradeable_values_to_a[most_profitable];
+                float value_of_this_trade_to_a = a_tradeable_values_to_a[most_profitable];
+                float value_of_this_trade_to_b = a_tradeable_values_to_b[most_profitable];
+
                 float quantity_of_this_trade = a_tradeable_quantities[most_profitable];
                 
-                if (value_of_this_trade > b_spending_limit)
+                if (value_of_this_trade_to_a > b_spending_limit)
                 {
-                    float ratio_you_can_have = b_spending_limit / value_of_this_trade;
+                    float ratio_you_can_have = b_spending_limit / value_of_this_trade_to_a;
                     quantity_of_this_trade *= ratio_you_can_have;
-                    value_of_this_trade    *= ratio_you_can_have;
+                    value_of_this_trade_to_a    *= ratio_you_can_have;
+                    value_of_this_trade_to_b    *= ratio_you_can_have;
                 }
 
                 // exchange the goods here.
                 this.people[a].owns[most_profitable] -= quantity_of_this_trade;
                 this.people[b].owns[most_profitable] += quantity_of_this_trade;
 
-                b_spending_limit -= value_of_this_trade;
+                b_spending_limit -= value_of_this_trade_to_a;
+                a_gave_value     += value_of_this_trade_to_a;
+
+                b_received_value += value_of_this_trade_to_b;
+                
                 a_tradeable_profitability_to_b.Remove(most_profitable);
-                b_received_value += value_of_this_trade;
 
                 // update A's source information.
                 if (!this.people[a].sources.ContainsKey(b_gives))
@@ -1062,23 +1091,21 @@ class World
                 }
                 
 
-        float how_much_b_expected_to_get = b_gives_amount * this.people[b].prices[b_gives]; 
-        float how_much_a_expected_to_get = b_gives_amount * this.people[a].prices[b_gives];
+        float b_gave_value = b_gives_amount * this.people[b].prices[b_gives]; 
 
         
 
 
-            float a_received_value = b_gives_amount * this.people[a].prices[b_gives];
 
-            float rep_bonus_a_about_b = a_received_value - how_much_a_expected_to_get;
-            float rep_bonus_b_about_a = b_received_value - how_much_b_expected_to_get;
+            float rep_bonus_a_about_b = a_received_value - a_gave_value;
+            float rep_bonus_b_about_a = b_received_value - b_gave_value;
 
 
             if (a == this.player || b == this.player)
                 {
 
-                    Console.WriteLine("In total, " + this.people[b].name + " thinks they received " + b_received_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_b_about_a.ToString());
-                    Console.WriteLine("In total, " + this.people[a].name + " thinks they received " + a_received_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_a_about_b.ToString());
+                    Console.WriteLine("In total, " + this.people[b].name + " thinks they received " + b_received_value.ToString() + " and that they gave " + b_gave_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_b_about_a.ToString());
+                    Console.WriteLine("In total, " + this.people[a].name + " thinks they received " + a_received_value.ToString() + " and that they gave " + a_gave_value.ToString() + " worth of stuff, leading to a rep bonus of " + rep_bonus_a_about_b.ToString());
 
                 }
 
@@ -1479,15 +1506,18 @@ class World
             {
                 if (this.people[a].owns.ContainsKey(item))
                 {
-                    if (this.people[a].likes.ContainsKey(creditor))
+                    if (this.people[a].owns[item] > 0.0f)
                     {
-                        if (this.people[a].likes[creditor] > biggest_payment_importance)
+                        if (this.people[a].likes.ContainsKey(creditor))
                         {
-                            
-                            biggest_payment_importance = this.people[a].likes[creditor];
-                            can_pay_debt = true;
-                            biggest_creditor = creditor;
+                            if (this.people[a].likes[creditor] > biggest_payment_importance)
+                            {
+                                
+                                biggest_payment_importance = this.people[a].likes[creditor];
+                                can_pay_debt = true;
+                                biggest_creditor = creditor;
 
+                            }
                         }
                     }
                 }   
@@ -1641,13 +1671,13 @@ class World
                         }
                     }
 
-                        amount_to_give *= -1;
+                        // amount_to_give *= -1;
 
                         // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
                         this.adjust_agreement(a, b, item, amount_to_give);
 
-                        this.people[b].owns[item] += amount_to_give;
-                        this.people[a].owns[item] -= amount_to_give;
+                        this.people[b].owns[item] -= amount_to_give;
+                        this.people[a].owns[item] += amount_to_give;
                         
                     // }
                 // }
