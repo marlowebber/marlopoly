@@ -652,6 +652,24 @@ class World
             bool a_has_source = this.people[a].sources.ContainsKey(item);
             bool b_has_source = this.people[b].sources.ContainsKey(item);
 
+            if (a_has_source)
+            {
+                if (this.people[a].sources[item] == a)
+                {
+                    a_has_source = false;
+                    this.people[a].sources[item] = -1;
+                }
+            }
+
+              if (b_has_source)
+            {
+                if (this.people[b].sources[item] == b)
+                {
+                    b_has_source = false;
+                    this.people[b].sources[item] = -1;
+                }
+            }
+
             if (!a_has_source && b_has_source) 
             {
                 this.people[a].sources.Add(item, this.people[b].sources[item]);
@@ -1669,19 +1687,27 @@ class World
                     
                      if (amount_to_give > 0.0f)
                     {
-                    if ( amount_to_give > this.people[a].owns[item])
+                        if ( amount_to_give > this.people[a].owns[item])
                         {
                             amount_to_give =  this.people[a].owns[item];
                         }
+
+                        if (amount_to_give > 0.0f)
+                        {
+
+                                // amount_to_give *= -1;
+
+                                // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
+                                this.adjust_agreement(a, b, item, -amount_to_give);
+
+                                this.people[b].owns[item] += amount_to_give;
+                                this.people[a].owns[item] -= amount_to_give;
+
+                        }
+                    
+
+                    
                     }
-
-                        // amount_to_give *= -1;
-
-                        // a minus sign here indicates repayment, whereas a positive would increase the amount of debt.
-                        this.adjust_agreement(a, b, item, -amount_to_give);
-
-                        this.people[b].owns[item] += amount_to_give;
-                        this.people[a].owns[item] -= amount_to_give;
                         
                     // }
                 // }
