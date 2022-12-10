@@ -38,11 +38,19 @@ static class Content
 
 public enum Characteristics 
 {
+	// these characteristics influence conversation dialogue.
   Cute,
   Funny,
   Smart,
   Tough,
   Cool,
+
+	// these characteristics influence game-mechanic behavior.
+
+	Stingy,  // how much a character will refuse to accept bad deals
+
+	Ruthless, // how much a character is willing to harm someone they like. 100 means they will kill someone they like 1, 0 means they won't kill someone they like -1.
+
 };
 
 public const int n_characteristics = 5;

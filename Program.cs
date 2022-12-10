@@ -307,11 +307,12 @@ class World
 
 
 
-    bool print_player = true;
 
     public void print_character_status(int character)
     {
 
+
+        Console.WriteLine("--------------------------------------------------------");
         Console.WriteLine( this.people[character].name + " turn " + this.time );
 
         Console.WriteLine("Hungry: " + this.people[character].hungry.ToString());
@@ -376,6 +377,8 @@ class World
         } 
         Console.WriteLine(owes);
 
+        Console.WriteLine("--------------------------------------------------------");
+
     }
 
 
@@ -398,6 +401,22 @@ class World
 
 
                 char here = '_';
+
+                // outside of the world edges is clear.
+                if (x < 0 || x > this.world_size || y < 0 || y > this.world_size)
+                {
+                    here = ' ';
+                }
+                // draw a border around the edge of the world.
+                else if (x == 0 || x == this.world_size )
+                {
+                    here = '|';
+                }
+                else if ( y == 0 || y == this.world_size)
+                {
+                    here = '-';
+                }
+
 
                 // draw a crosshair over the player position
                 if (
@@ -443,6 +462,12 @@ class World
                         break;
                     }
                 }
+
+                if (Char.IsWhiteSpace(here))
+                {
+                    here = ' ';
+                }
+
                 row += here;
             }
             Console.WriteLine(row);
@@ -1136,7 +1161,7 @@ class World
 
 
         
-        if (a == this.player && this.print_player && greatest_need != -1)
+        if (a == this.player && greatest_need != -1)
         {
             Console.WriteLine("Greatest Need: " +  Content.item_names[ greatest_need ]);
         }
@@ -1148,7 +1173,7 @@ class World
             go = true;
             destination = this.people[biggest_creditor].position;
 
-                if (a == this.player && this.print_player)
+                if (a == this.player )
             {
                 Console.WriteLine("    Going to see " + this.people[biggest_creditor].name + " to repay debt. ");
             }
@@ -1162,7 +1187,7 @@ class World
             go = true;
             destination = this.people[source].position;
 
-              if (a == this.player && this.print_player)
+              if (a == this.player)
             {
                 Console.WriteLine("    Moving to source: " + this.people[source].name);
             }
@@ -1172,7 +1197,7 @@ class World
             // you don't need anything; go hang out with a friend
             destination = this.people[bf].position;
             go = true;
-            if (a == this.player && this.print_player)
+            if (a == this.player)
             {
                 Console.WriteLine("    Hanging out with " + this.people[bf].name);
             }
@@ -1181,7 +1206,7 @@ class World
         {
             // you don't need anything; but you don't have any friends either.
             // vibrate around randomly until you bump into something.
-            if (a == this.player && this.print_player)
+            if (a == this.player)
             {
                 Console.WriteLine("    Wandering");
             }
@@ -1192,7 +1217,7 @@ class World
         else
         {
             int source = Utilities.rng_int(this.population_size);
-            if (a == this.player && this.print_player)
+            if (a == this.player)
             {
                 Console.WriteLine("    Asking a random person: " + this.people[source].name);
             }
@@ -1311,25 +1336,94 @@ class World
     }
 
 
+
+    ConsoleKeyInfo cki;
+
+
     public void person_turn(int a)
     {
-
-            this.people[a].compile_needs(); 
-
-            if (this.print_player)
-            {
-                if (a == this.player)
-                {
-                    this.print_character_status(a);
-                }
-            }
-
 
             this.people[a].chatted_this_turn = false;
             this.people[a].traded_this_turn = false;
 
 
 
+
+            this.people[a].compile_needs(); 
+
+
+
+         
+                if (a == this.player)
+                {
+
+                    this.print_character_status(a);
+
+
+                    Console.WriteLine("What will you do?");
+
+                    this.cki = Console.ReadKey();
+                    
+                    switch(this.cki.Key)
+                    {
+                        case ConsoleKey.Spacebar:
+                        {
+                            break;
+                        }
+
+
+                        case ConsoleKey.LeftArrow:
+                        {
+                            this.people[a].position.X -= 1.5f;
+                            break;
+                        }
+                        case ConsoleKey.RightArrow:
+                        {
+                            this.people[a].position.X += 1.5f;
+                            break;
+                        }
+                        case ConsoleKey.UpArrow:
+                        {
+                            this.people[a].position.Y += 1.5f;
+                            break;
+                        }
+                        case ConsoleKey.DownArrow:
+                        {
+                            this.people[a].position.Y -= 1.5f;
+                            break;
+                        }
+
+
+
+                        case ConsoleKey.G:
+                        {
+                            String user_input = "";
+                            try
+                            {
+
+                                Console.WriteLine("Enter the name of the person or place you want to go to.");
+                                user_input = Console.ReadLine();
+                            }
+                            catch
+                            {
+                                Console.WriteLine("Error.");
+                            }
+
+
+
+
+                            break;
+                        }
+
+
+                    }
+                    
+            
+
+            }
+
+
+      
             int random_start = Utilities.rng_int( this.population_size);
             for (int bhh = 0; bhh < this.population_size; bhh++  ) 
             {
@@ -1340,15 +1434,11 @@ class World
                     {
 
 
-                        if (this.print_player)
-                        {
                             if (a == this.player || b == this.player)
                             {
                                 Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
                             }
-                        }
-
-
+                       
 
                         this.introduce(a,b);
 
@@ -1367,11 +1457,6 @@ class World
                             float b_gives_amount = this.people[a].greatest_need_quantity();
                             this.trade(a,b, b_gives, b_gives_amount);
                         }
-                        // else
-                        // {
-                        //     float b_gives_amount = this.people[a].greatest_need_quantity();
-                        //     this.trade_for_specific_item(a, b, b_gives, b_gives_amount);
-                        // }
                     
                         
                         if (! this.people[a].is_location )
@@ -1395,7 +1480,7 @@ class World
     }
 
 
-    ConsoleKeyInfo cki;
+
     public void update()
     {
 
@@ -1405,18 +1490,11 @@ class World
         {
 
 
-            this.person_turn(a);
 
-            if (a == this.player)
-            {
-                switch(cki.Key)
-                {
-                    case ConsoleKey.Spacebar:
-                    {
-                        break;
-                    }
-                }
-            }
+           
+
+
+            this.person_turn(a);
 
 
         }
@@ -1424,9 +1502,6 @@ class World
 
 
 
-
-            cki = Console.ReadKey();
-    
     }
 }
 
@@ -1468,7 +1543,6 @@ class Game
         for (int i = 0; i < 1000; i++)
         {
             this.world.update();
-            Console.WriteLine("Turn {0}", i);
 
             this.world.camera();
         }
