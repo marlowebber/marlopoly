@@ -1113,7 +1113,7 @@ class World
     }
 
 
-      public void update_position_based_on_needs(int a)
+      public void npc_ai(int a)
     {
         Vector2 destination = this.people[a].position;
         bool go = false;
@@ -1157,14 +1157,6 @@ class World
             }
         }
 
-
-
-
-        
-        if (a == this.player && greatest_need != -1)
-        {
-            Console.WriteLine("Greatest Need: " +  Content.item_names[ greatest_need ]);
-        }
 
 
 
@@ -1256,6 +1248,66 @@ class World
              this.people[a].position.Y  = Utilities.clamp( this.people[a].position.Y , 0, this.world_size);
 
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            int random_start = Utilities.rng_int( this.population_size);
+            for (int bhh = 0; bhh < this.population_size; bhh++  ) 
+            {
+                int b = (bhh + random_start) % this.population_size;
+                if (a != b)
+                {
+                    if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
+                    {
+
+
+                            if (a == this.player || b == this.player)
+                            {
+                                Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
+                            }
+                       
+
+                        this.introduce(a,b);
+
+
+                        this.settle_agreements(a, b);
+
+
+                        if (! this.people[a].is_location )
+                        {
+                            this.gossip(a, b);
+
+                           
+                        }
+
+                        int b_gives = this.people[a].greatest_need();
+                      
+                        if ( b_gives != -1)
+                        {
+                            float b_gives_amount = this.people[a].greatest_need_quantity();
+                            this.trade(a,b, b_gives, b_gives_amount);
+                        }
+                    
+                        
+                        
+
+                        break;
+                    } 
+                }
+            }
 
     }
 
@@ -1357,15 +1409,35 @@ class World
                 if (a == this.player)
                 {
 
-                    this.print_character_status(a);
 
 
-                    Console.WriteLine("What will you do?");
+                    Console.WriteLine("What will you do? [l] to list:");
 
                     this.cki = Console.ReadKey();
                     
                     switch(this.cki.Key)
                     {
+
+
+                        case ConsoleKey.L:
+                        {
+
+                            
+                            Console.WriteLine("[q] Print character status");
+                            Console.WriteLine("[up, down, left, right] move");
+                            Console.WriteLine("[space] wait 1 turn");
+
+
+                            break;
+                        }
+
+                        case ConsoleKey.Q:
+                        {
+                            this.print_character_status(a);
+                            break;
+                        }
+
+
                         case ConsoleKey.Spacebar:
                         {
                             break;
@@ -1374,44 +1446,22 @@ class World
 
                         case ConsoleKey.LeftArrow:
                         {
-                            this.people[a].position.X -= 1.5f;
+                            this.people[a].position.X -= 1.0f;
                             break;
                         }
                         case ConsoleKey.RightArrow:
                         {
-                            this.people[a].position.X += 1.5f;
+                            this.people[a].position.X += 1.0f;
                             break;
                         }
                         case ConsoleKey.UpArrow:
                         {
-                            this.people[a].position.Y += 1.5f;
+                            this.people[a].position.Y -= 1.0f;
                             break;
                         }
                         case ConsoleKey.DownArrow:
                         {
-                            this.people[a].position.Y -= 1.5f;
-                            break;
-                        }
-
-
-
-                        case ConsoleKey.G:
-                        {
-                            String user_input = "";
-                            try
-                            {
-
-                                Console.WriteLine("Enter the name of the person or place you want to go to.");
-                                user_input = Console.ReadLine();
-                            }
-                            catch
-                            {
-                                Console.WriteLine("Error.");
-                            }
-
-
-
-
+                            this.people[a].position.Y += 1.0f;
                             break;
                         }
 
@@ -1421,60 +1471,19 @@ class World
             
 
             }
+            else
+            {
+    
+                this.npc_ai(a);
+            }
 
 
       
-            int random_start = Utilities.rng_int( this.population_size);
-            for (int bhh = 0; bhh < this.population_size; bhh++  ) 
-            {
-                int b = (bhh + random_start) % this.population_size;
-                if (a != b)
-                {
-                    if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
-                    {
-
-
-                            if (a == this.player || b == this.player)
-                            {
-                                Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
-                            }
-                       
-
-                        this.introduce(a,b);
-
-
-
-                        this.settle_agreements(a, b);
-
-
-
-
-
-                        int b_gives = this.people[a].greatest_need();
-                      
-                        if ( b_gives != -1)
-                        {
-                            float b_gives_amount = this.people[a].greatest_need_quantity();
-                            this.trade(a,b, b_gives, b_gives_amount);
-                        }
-                    
-                        
-                        if (! this.people[a].is_location )
-                        {
-                            this.gossip(a, b);
-
-                           
-                        }
-
-                        break;
-                    } 
-                }
-            }
+     
 
             if (! this.people[a].is_location )
             {
-                this.people[a].bodily_functions();        
-                this.update_position_based_on_needs(a);
+                this.people[a].bodily_functions();    
             }
 
     }
