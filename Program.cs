@@ -252,27 +252,63 @@ public char icon;
 
             }
         }
-       
-        if (! this.is_location)
-        {
-            if (this.hungry > 0.0f)
-            {
-                this.adjust_needs((int)Content.Items.Chips , 1.0f,this.hungry );
-            }
-            if (this.thirsty > 0.0f)
-            {
-                this.adjust_needs((int)Content.Items.Beer  , 1.0f, this.thirsty );
-            }
-            if (this.hedgy > 0.0f)
-            {
-                this.adjust_needs((int)Content.Items.Smokes  , 1.0f, this.hedgy );
-            }
-        }
-      
 
-        // everyone wants 1,000,000 dollars
-        // this.adjust_needs((int)Content.Items.Cash  , 1000000.0f, 1.0f);
-        
+        if (this.is_location)
+        {
+            this.compile_location_needs();
+        }
+        else
+        {
+            this.compile_person_needs();
+        }
+       
+   
+
+    }
+
+    void compile_person_needs()
+    {
+        if (this.hungry > 0.0f)
+        {
+            this.adjust_needs((int)Content.Items.Chips , 1.0f,this.hungry );
+        }
+        if (this.thirsty > 0.0f)
+        {
+            this.adjust_needs((int)Content.Items.Beer  , 1.0f, this.thirsty );
+        }
+        if (this.hedgy > 0.0f)
+        {
+            this.adjust_needs((int)Content.Items.Smokes  , 1.0f, this.hedgy );
+        }
+    }
+
+    void compile_location_needs()
+    {
+
+        this.needs_priorities[  (int)Content.Items.Cash  ] = 1.0f;
+        this.needs_quantities[  (int)Content.Items.Cash  ] = 1000000.0f;
+
+        this.owns[(int)Content.Items.Cash] = 100.0f;
+   
+        if (this.name == Content.location_names[0]  )
+        {
+            this.owns[(int)Content.Items.Beer] = 100.0f;
+        }
+        else  if (this.name == Content.location_names[1]  )
+        {
+            this.owns[(int)Content.Items.Beer] = 100.0f;
+        }
+        else  if (this.name == Content.location_names[2]  )
+        {
+            this.owns[(int)Content.Items.Spin] = 100.0f;
+            this.owns[(int)Content.Items.Filters] = 100.0f;
+            this.owns[(int)Content.Items.Papers] = 100.0f;
+            this.owns[(int)Content.Items.Lighter] = 100.0f;
+        }
+        else  if (this.name == Content.location_names[3]  )
+        {
+            this.owns[(int)Content.Items.Chips] = 100.0f;
+        }
 
 
     }
@@ -280,8 +316,10 @@ public char icon;
 
 
 
+
   
 }
+
 
 
 
@@ -382,7 +420,13 @@ class World
     }
 
 
-
+    public void clear_screen()
+    {
+        for (int i = 0; i < 1000; ++i)
+        {
+            Console.WriteLine("");
+        }
+    }
 
 
    public void camera()
@@ -773,6 +817,24 @@ class World
                     amount_b_is_willing_to_give = this.people[b].owns[b_gives] - this.people[b].needs_quantities[b_gives];
                 }
             }
+
+
+            // A preexisting arrangement to exchange that item means it cannot be traded to this person until the agreement is resolved.
+            if (this.people[b].agreements.ContainsKey(a))
+            {
+                if (this.people[b].agreements[a].ContainsKey(b_gives))
+                {
+                    amount_b_is_willing_to_give = 0.0f;
+                }
+            }
+
+            if (this.people[a].agreements.ContainsKey(b))
+            {
+                if (this.people[a].agreements[b].ContainsKey(b_gives))
+                {
+                    amount_b_is_willing_to_give = 0.0f;
+                }
+            }
         }
 
 
@@ -893,6 +955,7 @@ class World
             goods_that_didnt_sell.Add(item);
         }
 
+        int count = 0;
         while (true)
         {
             // B is getting the goods in order from most to least profitable.
@@ -960,10 +1023,11 @@ class World
                 }
             }
 
-            if (most_profitable == -1 || b_spending_limit <= 0.0f)
+            if (most_profitable == -1 || b_spending_limit <= 0.0f || count > Content.n_items)
             {
                 break;
             }
+            count++;
         }
 
 
@@ -1288,10 +1352,9 @@ class World
 
                         if (! this.people[a].is_location )
                         {
-                            this.gossip(a, b);
-
-                           
+                            this.gossip(a, b);   
                         }
+                     
 
                         int b_gives = this.people[a].greatest_need();
                       
@@ -1310,6 +1373,8 @@ class World
             }
 
     }
+
+
 
 
     public void introduce(int a, int b)
@@ -1389,6 +1454,13 @@ class World
 
 
 
+    public void player_trade()
+    {
+
+    }
+
+
+
     ConsoleKeyInfo cki;
 
 
@@ -1409,14 +1481,25 @@ class World
                 if (a == this.player)
                 {
 
+                    bool wait = false;
 
-
-                    Console.WriteLine("What will you do? [l] to list:");
+                    Console.WriteLine("What will you do? [l] list options");
 
                     this.cki = Console.ReadKey();
                     
                     switch(this.cki.Key)
                     {
+
+
+                        case ConsoleKey.T:
+                        {
+
+
+
+
+                            break;
+                        }
+
 
 
                         case ConsoleKey.L:
@@ -1427,13 +1510,15 @@ class World
                             Console.WriteLine("[up, down, left, right] move");
                             Console.WriteLine("[space] wait 1 turn");
 
-
+                            wait = true;
                             break;
                         }
 
                         case ConsoleKey.Q:
                         {
                             this.print_character_status(a);
+
+                            wait = true;
                             break;
                         }
 
@@ -1466,6 +1551,13 @@ class World
                         }
 
 
+                    }
+
+
+                    if (wait)
+                    {
+                        Console.WriteLine("[space] proceed");
+                        this.cki = Console.ReadKey();
                     }
                     
             
@@ -1546,14 +1638,20 @@ class Game
         Console.WriteLine("Version {0}", Environment.OSVersion.Version);
     }
 
+
+    public void world_turn()
+    {
+            this.world.clear_screen();
+            this.world.camera();
+            this.world.update();
+    }
+
     public void run()
     {
         this.world.setup();
         for (int i = 0; i < 1000; i++)
         {
-            this.world.update();
-
-            this.world.camera();
+            this.world_turn();
         }
     }
 
