@@ -345,6 +345,9 @@ class World
 
 
 
+    
+
+
 
     public void print_character_status(int character)
     {
@@ -482,7 +485,7 @@ class World
                 }
 
 
-                for (int k = 0; k < population_size; ++k)
+                for (int k = 0; k < this.population_size; ++k)
                 {
                     if ((int)this.people[k].position.X == x && (int)this.people[k].position.Y == y )
                     {
@@ -517,6 +520,38 @@ class World
             Console.WriteLine(row);
         }
     }
+
+
+
+    public int select_person()
+    {
+        int result = -1;
+
+        Dictionary<char, int> nearby = new Dictionary<char, int> ();
+
+        Console.WriteLine("select a nearby person:");
+
+        char index = 'a';
+        for (int i = 0; i < this.population_size; i++)
+        {
+            if (this.touching(this.player, i))
+            {
+                nearby.Add(index, i);
+                Console.WriteLine( "[" + index.ToString() + "] " + this.people[i].name);
+                index++;
+            }
+        }
+
+        this.cki = Console.ReadKey();
+        
+        if (nearby.ContainsKey(this.cki.KeyChar))
+        {
+            return nearby[this.cki.KeyChar];
+        }
+
+        return result;
+    }
+
 
 
 
@@ -1110,6 +1145,12 @@ class World
 
         const float const_gossip = 0.025f;
 
+        if (a == this.player || b == this.player)
+        {
+            Console.WriteLine(this.people[a].name + " met with " + this.people[b].name);
+            Console.WriteLine( "they like each other " + this.people[a].likes[b].ToString() + " and " + this.people[b].likes[a].ToString() + " respectively.");
+        }
+
         // 1. small talk.
         // a says something that falls somewhere on their scale of personality characteristic.
         // b has a reputation adjustment based on the difference between their ideals and what a said.
@@ -1144,6 +1185,27 @@ class World
 
             this.people[b].adjust_likes(a, rep_adjust_b_a);
             this.people[b].adjust_likes(c, rep_adjust_b_c);
+
+
+            if (a == this.player || b == this.player)
+            {
+
+
+
+                Console.WriteLine("they talked about " + this.people[c].name);
+                Console.WriteLine(  this.people[a].name + " likes " + this.people[c].name + " " + this.people[a].likes[c].ToString()
+               + " and " +  this.people[b].name + " likes " + this.people[c].name + " " + this.people[b].likes[c].ToString());
+
+               Console.WriteLine("this made " + this.people[a].name + " like " + this.people[b].name + " " + rep_adjust_a_b.ToString() + " more,"
+               + " and like "+ this.people[c].name + " " + rep_adjust_a_c.ToString() + " more");
+
+
+               Console.WriteLine("this made " + this.people[b].name + " like " + this.people[a].name + " " + rep_adjust_b_a.ToString() + " more,"
+               + " and like "+ this.people[c].name + " " + rep_adjust_b_c.ToString() + " more");
+
+
+            }
+
         }
         this.people[a].chatted_this_turn = true;
         this.people[b].chatted_this_turn = true;
@@ -1174,6 +1236,17 @@ class World
                 }
             }
         }
+    }
+
+
+    public bool touching(int a, int b)
+    {
+         if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
+        {
+            return true;
+        }
+        return false;
+
     }
 
 
@@ -1334,7 +1407,7 @@ class World
                 int b = (bhh + random_start) % this.population_size;
                 if (a != b)
                 {
-                    if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
+                    if (this.touching(a,b))
                     {
 
 
@@ -1459,6 +1532,38 @@ class World
 
     }
 
+    public void player_talk()
+    {
+
+        int b = this.select_person();
+
+        this.gossip(this.player, b);
+
+    }
+
+
+
+    public void player_look()
+    {
+
+       
+
+            int random_start = Utilities.rng_int( this.population_size);
+            for (int bhh = 0; bhh < this.population_size; bhh++  ) 
+            {
+                int b = (bhh + random_start) % this.population_size;
+                if (this.player != b)
+                {
+                    if (this.touching(this.player,b))
+                    {
+                        Console.WriteLine("Here is " + this.people[b].name);
+
+                    }
+                }
+            
+        }
+    }
+
 
 
     ConsoleKeyInfo cki;
@@ -1483,7 +1588,7 @@ class World
 
                     bool wait = false;
 
-                    Console.WriteLine("What will you do? [l] list options");
+                    Console.WriteLine("What will you do? [o] list options");
 
                     this.cki = Console.ReadKey();
                     
@@ -1495,19 +1600,27 @@ class World
                         {
 
 
-
+                            this.player_talk();
 
                             break;
                         }
 
 
-
                         case ConsoleKey.L:
+                        {
+                            this.player_look();
+                            wait = true;
+
+                            break;
+                        }
+                        case ConsoleKey.O:
                         {
 
                             
                             Console.WriteLine("[q] Print character status");
                             Console.WriteLine("[up, down, left, right] move");
+                            Console.WriteLine("[t] talk");
+
                             Console.WriteLine("[space] wait 1 turn");
 
                             wait = true;

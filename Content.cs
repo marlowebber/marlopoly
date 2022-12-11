@@ -188,9 +188,10 @@ public static readonly List<string> location_names = new List<string> ( new[]
 	"The Valley",
 	"Nite Owl Convenience",
 	"The Vending Machine",
+	"Ray White Real Estate",
 });
 
-public const int n_place_names = 4;
+public const int n_place_names = 5;
 
 
 
