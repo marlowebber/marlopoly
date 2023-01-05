@@ -210,6 +210,12 @@ public const int n_place_names = 5;
 // recipes.Add( (int)Items.Smokes, recipe_smokes);
 
 
+public const int world_size = 80;
+
+
+public const float eats_per_turn = 0.01f;
+public const float drinks_per_turn = 0.01f;
+public const float smokes_per_turn = 0.01f;
 
 
 }

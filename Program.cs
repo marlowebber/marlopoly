@@ -39,10 +39,6 @@ public float hungry = 0.0f;
 public float thirsty = 0.0f;
 public float hedgy = 0.0f;
 
-public const float eats_per_turn = 0.01f;
-public const float drinks_per_turn = 0.01f;
-public const float smokes_per_turn = 0.01f;
-
 public bool is_location = false;
 
 public char icon;
@@ -123,52 +119,7 @@ public char icon;
 
 
 
-    public void bodily_functions()
-    {
-        this.hungry = Utilities.clamp( this.hungry + eats_per_turn, -1.0f, 2.0f );
-        this.thirsty = Utilities.clamp( this.thirsty + drinks_per_turn, -1.0f, 2.0f );
-        this.hedgy = Utilities.clamp( this.hedgy + smokes_per_turn, -1.0f, 2.0f );
-
-        if (this.hungry > 0.0f)
-        {
-            if (this.owns.ContainsKey((int)Content.Items.Chips))
-            {
-                if (this.owns[(int)Content.Items.Chips] >= (this.quantity_owed_to_others((int)Content.Items.Chips) + 1.0f ))
-                {
-                    this.owns[(int)Content.Items.Chips] -= 1.0f;
-                    this.hungry -= 1.0f;
-                }
-            }
-        }
-
-
-        if (this.hedgy > 0.0f)
-        {
-            if (this.owns.ContainsKey((int)Content.Items.Smokes))
-            {
-                if (this.owns[(int)Content.Items.Smokes] >= (this.quantity_owed_to_others((int)Content.Items.Smokes) + 1.0f ))
-                {
-                    this.owns[(int)Content.Items.Smokes] -= 1.0f;
-                    this.hedgy -= 1.0f;
-                }
-            }
-        }
-
-
-        if (this.thirsty > 0.0f)
-        {
-            if (this.owns.ContainsKey((int)Content.Items.Beer))
-            {
-                if (this.owns[(int)Content.Items.Beer] >= (this.quantity_owed_to_others((int)Content.Items.Beer) + 1.0f ))
-                {
-                    this.owns[(int)Content.Items.Beer] -= 1.0f;
-                    this.thirsty -= 1.0f;
-                }
-            }
-        }
-
-    }
-
+   
     public void adjust_needs(int need, float amount, float priority)
     {
         if (! this.needs_quantities.ContainsKey(need))
@@ -334,6 +285,11 @@ public char icon;
 
 
 
+class Square
+{
+
+}
+
 
 
 class World
@@ -342,19 +298,64 @@ class World
 
     int population_size = 0;
 
-    int world_size = 80;
-
     int player = 36;
 
     List<Person> people = new List<Person>();
 
-    public World(int world_size)
+    Square[] map = new Square[Content.world_size];
+
+    public World()
     {
-        this.world_size = world_size;
+        
     }
 
 
 
+     public void bodily_functions(int a)
+    {
+        this.people[a].hungry = Utilities.clamp( this.people[a].hungry + Content.eats_per_turn, -1.0f, 2.0f );
+        this.people[a].thirsty = Utilities.clamp( this.people[a].thirsty + Content.drinks_per_turn, -1.0f, 2.0f );
+        this.people[a].hedgy = Utilities.clamp( this.people[a].hedgy + Content.smokes_per_turn, -1.0f, 2.0f );
+
+        if (this.people[a].hungry > 0.0f)
+        {
+            if (this.people[a].owns.ContainsKey((int)Content.Items.Chips))
+            {
+                if (this.people[a].owns[(int)Content.Items.Chips] >= (this.people[a].quantity_owed_to_others((int)Content.Items.Chips) + 1.0f ))
+                {
+                    this.people[a].owns[(int)Content.Items.Chips] -= 1.0f;
+                    this.people[a].hungry -= 1.0f;
+                }
+            }
+        }
+
+
+        if (this.people[a].hedgy > 0.0f)
+        {
+            if (this.people[a].owns.ContainsKey((int)Content.Items.Smokes))
+            {
+                if (this.people[a].owns[(int)Content.Items.Smokes] >= (this.people[a].quantity_owed_to_others((int)Content.Items.Smokes) + 1.0f ))
+                {
+                    this.people[a].owns[(int)Content.Items.Smokes] -= 1.0f;
+                    this.people[a].hedgy -= 1.0f;
+                }
+            }
+        }
+
+
+        if (this.people[a].thirsty > 0.0f)
+        {
+            if (this.people[a].owns.ContainsKey((int)Content.Items.Beer))
+            {
+                if (this.people[a].owns[(int)Content.Items.Beer] >= (this.people[a].quantity_owed_to_others((int)Content.Items.Beer) + 1.0f ))
+                {
+                    this.people[a].owns[(int)Content.Items.Beer] -= 1.0f;
+                    this.people[a].thirsty -= 1.0f;
+                }
+            }
+        }
+
+    }
 
     
 
@@ -461,16 +462,16 @@ class World
                 char here = '_';
 
                 // outside of the world edges is clear.
-                if (x < 0 || x > this.world_size || y < 0 || y > this.world_size)
+                if (x < 0 || x > Content.world_size || y < 0 || y > Content.world_size)
                 {
                     here = ' ';
                 }
                 // draw a border around the edge of the world.
-                else if (x == 0 || x == this.world_size )
+                else if (x == 0 || x == Content.world_size )
                 {
                     here = '|';
                 }
-                else if ( y == 0 || y == this.world_size)
+                else if ( y == 0 || y == Content.world_size)
                 {
                     here = '-';
                 }
@@ -598,8 +599,8 @@ Console.WriteLine("Nearby:" );
 
         for(int j= 0; j < this.population_size; j++ )
         {
-            this.people[j].position.X = Utilities.rng_float() * this.world_size;
-            this.people[j].position.Y = Utilities.rng_float() * this.world_size;
+            this.people[j].position.X = Utilities.rng_float() * Content.world_size;
+            this.people[j].position.Y = Utilities.rng_float() * Content.world_size;
 
             
             this.people[j].adjust_owned(  (int) Utilities.rng_int(Content.n_items), Utilities.rng_float()* 10.0f  );
@@ -1406,8 +1407,8 @@ Console.WriteLine("Nearby:" );
      
                 this.people[a].position.Y += y_move;
 
-             this.people[a].position.X  = Utilities.clamp( this.people[a].position.X , 0, this.world_size);
-             this.people[a].position.Y  = Utilities.clamp( this.people[a].position.Y , 0, this.world_size);
+             this.people[a].position.X  = Utilities.clamp( this.people[a].position.X , 0, Content.world_size);
+             this.people[a].position.Y  = Utilities.clamp( this.people[a].position.Y , 0, Content.world_size);
 
         }
 
@@ -1434,12 +1435,13 @@ Console.WriteLine("Nearby:" );
                 {
                     if (this.touching(a,b))
                     {
+                        if (a <0 || b < 0) { continue; }
+                        if (a >= this.population_size || b >= this.population_size) { continue; }
 
-
-                            if (a == this.player || b == this.player)
-                            {
-                                Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
-                            }
+                        if (a == this.player || b == this.player)
+                        {
+                            Console.WriteLine($"{this.people[a].name} met with {this.people[b].name}");
+                        }
                        
 
                         this.introduce(a,b);
@@ -1620,7 +1622,7 @@ Console.WriteLine("Nearby:" );
 
     void wait_for_user()
     {
-        Console.WriteLine("[space] proceed");
+        Console.WriteLine("[any] proceed");
         while(true)
         {
             if (Console.ReadKey(true).KeyChar == ' ')
@@ -1800,7 +1802,7 @@ class Game
     private Random random = new Random();
 
 
-    private World world = new World(80);
+    private World world = new World();
 
 
 
