@@ -24,12 +24,8 @@ public static char rng_char()
 {
 
 	Random r = new Random();
-	char result = ' ';
-	while(Char.IsWhiteSpace(result))
-	{
-		result = (char)r.Next(255);
-	}
-	return result;
+
+	return (char) (  32 + r.Next(94) );
 }
 
 public static bool rng_bool()

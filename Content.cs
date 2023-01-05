@@ -44,13 +44,6 @@ public enum Characteristics
   Smart,
   Tough,
   Cool,
-
-	// these characteristics influence game-mechanic behavior.
-
-	Stingy,  // how much a character will refuse to accept bad deals
-
-	Ruthless, // how much a character is willing to harm someone they like. 100 means they will kill someone they like 1, 0 means they won't kill someone they like -1.
-
 };
 
 public const int n_characteristics = 5;
@@ -67,6 +60,7 @@ Cash,
   Lighter,
 }
 
+
 public static readonly List<string> item_names = new List<string> ( new[]
 {
 "Cash",
@@ -81,6 +75,14 @@ public static readonly List<string> item_names = new List<string> ( new[]
 
 public const int n_items = 8;
 
+
+
+public enum source_types 
+{
+  PERSON,
+  SITE,
+  REGION,
+}
 
 
 public static readonly List<string> person_names = new List<string> ( new[]

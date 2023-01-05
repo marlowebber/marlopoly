@@ -4,6 +4,17 @@ using System;
 
 
 
+class Source
+{
+    public int type = (int)Content.source_types.PERSON;
+    public int value = 0;
+}
+
+
+
+
+
+
 
 class Person
 {
@@ -519,6 +530,19 @@ class World
             }
             Console.WriteLine(row);
         }
+
+
+Console.WriteLine("Nearby:" );
+        for (int i = 0; i < this.population_size; i++)
+        {
+            if (this.touching(this.player, i))
+            {
+                Console.WriteLine(  this.people[i].name );
+            }
+        }
+
+
+
     }
 
 
@@ -538,15 +562,21 @@ class World
             {
                 nearby.Add(index, i);
                 Console.WriteLine( "[" + index.ToString() + "] " + this.people[i].name);
+
+                if (index == 'z')
+                {
+                    break;
+                }
+
                 index++;
             }
         }
 
-        this.cki = Console.ReadKey();
+        ConsoleKeyInfo cki = Console.ReadKey();
         
-        if (nearby.ContainsKey(this.cki.KeyChar))
+        if (nearby.ContainsKey(cki.KeyChar))
         {
-            return nearby[this.cki.KeyChar];
+            return nearby[cki.KeyChar];
         }
 
         return result;
@@ -637,6 +667,10 @@ class World
 
         this.people[this.player-1].adjust_likes(this.player, 0.5f);
         this.people[this.player].adjust_likes(this.player-1, 0.5f);
+
+
+    // print some intro text.
+    Console.WriteLine("What will you do? [o] list options");
     }
 
 
@@ -816,6 +850,10 @@ class World
 
     public void trade(int a, int b, int b_gives, float b_gives_amount)
     {   
+
+
+        this.introduce(a,b);
+
 
          if (a == this.player || b == this.player)
         {
@@ -1241,7 +1279,7 @@ class World
 
     public bool touching(int a, int b)
     {
-         if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.0f)
+         if (System.Numerics.Vector2.Distance(this.people[a].position, this.people[b].position) < 1.5f)
         {
             return true;
         }
@@ -1363,23 +1401,10 @@ class World
             float x_move = (float)Math.Cos(angle) * speed;
             float y_move = (float)Math.Sin(angle) * speed;
 
-            if (destination.X - this.people[a].position.X < x_move)
-            {
-                this.people[a].position.X = destination.X;
-            }
-            else
-            {
+   
                 this.people[a].position.X += x_move;
-            }
-
-            if (destination.Y - this.people[a].position.Y < y_move)
-            {
-                this.people[a].position.Y = destination.Y;
-            }
-            else
-            {
+     
                 this.people[a].position.Y += y_move;
-            }
 
              this.people[a].position.X  = Utilities.clamp( this.people[a].position.X , 0, this.world_size);
              this.people[a].position.Y  = Utilities.clamp( this.people[a].position.Y , 0, this.world_size);
@@ -1530,6 +1555,20 @@ class World
     public void player_trade()
     {
 
+
+        int b = this.select_person();
+
+      
+        int b_gives = this.people[this.player].greatest_need();
+        
+        if ( b_gives != -1)
+        {
+            float b_gives_amount = this.people[this.player].greatest_need_quantity();
+            this.trade(this.player,b, b_gives, b_gives_amount);
+        }
+
+
+
     }
 
     public void player_talk()
@@ -1537,7 +1576,11 @@ class World
 
         int b = this.select_person();
 
-        this.gossip(this.player, b);
+        if (b != -1)
+        {
+            this.gossip(this.player, b);
+        }
+
 
     }
 
@@ -1566,42 +1609,51 @@ class World
 
 
 
-    ConsoleKeyInfo cki;
+    // ConsoleKeyInfo cki;
+
+
+    ConsoleKeyInfo user_input()
+    {
+        Console.WriteLine("->");
+        return Console.ReadKey(true);
+    }
+
+    void wait_for_user()
+    {
+        Console.WriteLine("[space] proceed");
+        while(true)
+        {
+            if (Console.ReadKey(true).KeyChar == ' ')
+            {
+                return;
+            }
+        }
+    }
 
 
     public void person_turn(int a)
     {
 
-            this.people[a].chatted_this_turn = false;
-            this.people[a].traded_this_turn = false;
-
-
-
-
-            this.people[a].compile_needs(); 
-
-
+        
 
          
                 if (a == this.player)
                 {
 
                     bool wait = false;
-
-                    Console.WriteLine("What will you do? [o] list options");
-
-                    this.cki = Console.ReadKey();
+                   ConsoleKeyInfo  cki = this.user_input();
                     
-                    switch(this.cki.Key)
+                    switch(cki.Key)
                     {
 
 
-                        case ConsoleKey.T:
+                        case ConsoleKey.C:
                         {
 
 
                             this.player_talk();
 
+                            wait = true;
                             break;
                         }
 
@@ -1613,13 +1665,23 @@ class World
 
                             break;
                         }
+
+                          case ConsoleKey.T:
+                        {
+                            this.player_trade();
+                            wait = true;
+
+                            break;
+                        }
+
                         case ConsoleKey.O:
                         {
 
                             
                             Console.WriteLine("[q] Print character status");
                             Console.WriteLine("[up, down, left, right] move");
-                            Console.WriteLine("[t] talk");
+                            Console.WriteLine("[c] chat");
+                            Console.WriteLine("[t] trade");
 
                             Console.WriteLine("[space] wait 1 turn");
 
@@ -1669,8 +1731,7 @@ class World
 
                     if (wait)
                     {
-                        Console.WriteLine("[space] proceed");
-                        this.cki = Console.ReadKey();
+                        this.wait_for_user();
                     }
                     
             
@@ -1686,10 +1747,9 @@ class World
       
      
 
-            if (! this.people[a].is_location )
-            {
+         
                 this.people[a].bodily_functions();    
-            }
+            
 
     }
 
@@ -1703,14 +1763,23 @@ class World
         for (int a = 0; a < this.population_size; a++  ) 
         {
 
+             this.people[a].chatted_this_turn = false;
+            this.people[a].traded_this_turn = false;
+
+
+
+
+            this.people[a].compile_needs(); 
+
 
 
            
+             if (! this.people[a].is_location )
+            {
 
+                this.person_turn(a);
 
-            this.person_turn(a);
-
-
+            }
         }
 
 
