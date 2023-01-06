@@ -148,15 +148,34 @@ public char icon;
 
         foreach (int need in this.needs_priorities.Keys)
         {
-            if (this.needs_priorities[need] > greatest_need_priority)
-            {
-
                 if (this.needs_quantities.ContainsKey(need))
                 {
                     if (this.needs_quantities[need] > 0.0f)  // doesn't really make sense to have negative needs
                     {
-                            greatest_need_priority = this.needs_priorities[need];
-                            greatest_need = need;
+                          if (this.needs_priorities[need] > greatest_need_priority)
+            {
+                            // if you expect someone to bring you something, you don't need to go get it yourself, just wait.
+                            bool preexisting_agreement = false;
+                            foreach (int person in this.agreements.Keys)
+                            {
+                                if (this.agreements[person].ContainsKey(need) )
+                                {
+                                    if (this.agreements[person][need] >= this.needs_quantities[need])
+                                    {
+                                       preexisting_agreement = true; 
+                                    }
+                                }
+                            }
+
+
+                            if (!preexisting_agreement)
+                            {
+
+                                greatest_need_priority = this.needs_priorities[need];
+                                greatest_need = need;
+                            }
+
+                        
                     }
                 }
             }
@@ -287,7 +306,8 @@ public char icon;
 
 class Square
 {
-
+ public int item;
+ public int terrain; 
 }
 
 
@@ -302,7 +322,7 @@ class World
 
     List<Person> people = new List<Person>();
 
-    Square[] map = new Square[Content.world_size];
+    Square[] map = new Square[Content.world_size * Content.world_size];
 
     public World()
     {
@@ -437,7 +457,7 @@ class World
 
     public void clear_screen()
     {
-        for (int i = 0; i < 1000; ++i)
+        for (int i = 0; i < 100; ++i)
         {
             Console.WriteLine("");
         }
@@ -573,7 +593,7 @@ Console.WriteLine("Nearby:" );
             }
         }
 
-        ConsoleKeyInfo cki = Console.ReadKey();
+        ConsoleKeyInfo cki = Console.ReadKey(true);
         
         if (nearby.ContainsKey(cki.KeyChar))
         {
@@ -692,36 +712,74 @@ Console.WriteLine("Nearby:" );
         bool exists_a = this.people[a].agreements.ContainsKey(b);
         bool exists_b = this.people[b].agreements.ContainsKey(a);
 
-        if (exists_a && ! exists_b)
-        {
-            // if one party has a copy of the agreement and the other doesn't, mirror that person's part of the agreement to make the other person's one.
-            Dictionary<int, float> for_b = this.people[a].agreements[b];
-            foreach (int owed_thing in for_b.Keys )
-            {   
-                for_b[owed_thing] *= -1;
+        // if (!exists_a || ! exists_b)
+        // {
+        //     // if one party has a copy of the agreement and the other doesn't, mirror that person's part of the agreement to make the other person's one.
+         
+          if (!exists_a && !exists_b)
+            {
+                Dictionary<int, float> debt = new Dictionary<int, float>();
+                Dictionary<int, float> credit = new Dictionary<int, float>();
+                debt.Add( item, 0.0f );
+                credit.Add( item, 0.0f );
+                this.people[a].agreements.Add( b ,debt  );
+                this.people[b].agreements.Add( a ,credit  );
             }
-            this.people[a].agreements.Add( b ,for_b  );
-        }
-        else if (!exists_a && exists_b)
-        {
-            Dictionary<int, float> for_a = this.people[b].agreements[a];
-            foreach (int owed_thing in for_a.Keys )
-            {   
-                for_a[owed_thing] *= -1;
+            else
+            {
+                if (!exists_a)
+                {
+                    Dictionary<int, float> for_a = this.people[b].agreements[a];
+                    foreach (int owed_thing in for_a.Keys )
+                    {   
+                        for_a[owed_thing] *= -1;
+                    }
+                    this.people[a].agreements.Add(b ,for_a  );
+                }
+
+
+                if (!exists_b)
+                {
+                    Dictionary<int, float> for_b = this.people[a].agreements[b];
+                    foreach (int owed_thing in for_b.Keys )
+                    {   
+                        for_b[owed_thing] *= -1;
+                    }
+                    this.people[b].agreements.Add( a ,for_b  );
+                }
+        
+        
             }
-            this.people[a].agreements.Add( a ,for_a  );
-        }
-        else if (!exists_a && !exists_b)
-        {
-            Dictionary<int, float> debt = new Dictionary<int, float>();
-            Dictionary<int, float> credit = new Dictionary<int, float>();
-            debt.Add( item, quantity );
-            credit.Add( item, -quantity );
-            this.people[a].agreements.Add( b ,debt  );
-            this.people[b].agreements.Add( a ,credit  );
-        }
-        else if (exists_a && exists_b)
-        {
+
+
+         
+
+
+        // }
+      
+
+
+        // else if (!exists_a && !exists_b)
+        // {
+        //     Dictionary<int, float> debt = new Dictionary<int, float>();
+        //     Dictionary<int, float> credit = new Dictionary<int, float>();
+        //     debt.Add( item, quantity );
+        //     credit.Add( item, -quantity );
+        //     this.people[a].agreements.Add( b ,debt  );
+        //     this.people[b].agreements.Add( a ,credit  );
+        // }
+        // else if (exists_a && exists_b)
+        // {
+
+            if (!this.people[a].agreements[b].ContainsKey(item))
+            {
+                this.people[a].agreements[b].Add(item, 0.0f);
+            }
+            if (!this.people[b].agreements[a].ContainsKey(item))
+            {
+                this.people[b].agreements[a].Add(item, 0.0f);
+            }
+
             // they both agree on an existing agreement; adjust the quantity by the indicated amount.
             this.people[a].agreements[b][item] += quantity;
             this.people[b].agreements[a][item] -= quantity;
@@ -745,7 +803,7 @@ Console.WriteLine("Nearby:" );
                 this.people[a].agreements[b].Remove(item);
                 this.people[b].agreements[a].Remove(item);
             } 
-        }
+        // }
 
         this.people[a].compile_needs();
         this.people[b].compile_needs();
@@ -934,6 +992,10 @@ Console.WriteLine("Nearby:" );
                     this.refer_to_source(a, b, b_gives);
                }
             } 
+
+    
+
+
             return;
         }
 
@@ -1275,6 +1337,26 @@ Console.WriteLine("Nearby:" );
                 }
             }
         }
+
+
+        // 4. offer an agreement
+
+            int   agn  = this.people[a].greatest_need();
+            float agnq = this.people[a].greatest_need_quantity();
+
+        if (agn != -1)
+        {
+            if (! this.people[a].sources.ContainsKey(agn)  )
+            {
+                if (this.people[b].likes[a] > 0.0f && this.people[a].likes[b] > 0.0f)
+                {   
+                    this.adjust_agreement(b,a, agn,agnq  );
+                }
+            }
+        }
+          
+
+          
     }
 
 
@@ -1750,7 +1832,7 @@ Console.WriteLine("Nearby:" );
      
 
          
-                this.people[a].bodily_functions();    
+                this.bodily_functions(a);    
             
 
     }
