@@ -61,6 +61,15 @@ Cash,
 }
 
 
+public enum Materials 
+{
+Snow,
+  Rock,
+  Gravel,
+  Concrete,
+}
+
+
 public static readonly List<string> item_names = new List<string> ( new[]
 {
 "Cash",

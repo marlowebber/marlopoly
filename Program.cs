@@ -326,6 +326,11 @@ class World
 
     public World()
     {
+
+        for (int i = 0; i < Content.world_size * Content.world_size; i++ )
+        {
+            map[i] = new Square();
+        }
         
     }
 
@@ -481,6 +486,35 @@ class World
 
                 char here = '_';
 
+                int i = (y * Content.world_size) + x;
+
+                if (i >= 0 && i < (Content.world_size*Content.world_size))
+                {
+                    switch(this.map[i].terrain )
+                    {  
+                        case (int)Content.Materials.Snow:
+                        {
+                            here = '`';
+                            break;
+                        }
+                        case (int)Content.Materials.Rock:
+                        {
+                            here = '#';
+                            break;
+                        }
+                        case (int)Content.Materials.Concrete:
+                        {
+                            here = '_';
+                            break;
+                        }
+                        case (int)Content.Materials.Gravel:
+                        {
+                            here = ';';
+                            break;
+                        }
+                    }
+                }
+
                 // outside of the world edges is clear.
                 if (x < 0 || x > Content.world_size || y < 0 || y > Content.world_size)
                 {
@@ -610,6 +644,17 @@ Console.WriteLine("Nearby:" );
     {
         this.people.Clear();
         this.population_size = 0;
+
+        int sq = Content.world_size * Content.world_size;
+        for(int j= 0; j < sq; j++ )
+        {
+            this.map[j].terrain = (int)Content.Materials.Snow;
+            this.map[j].item = -1;
+
+        }
+
+
+
         foreach (string name in Content.person_names)
         {
             this.people.Add(new Person(name));
@@ -967,6 +1012,11 @@ Console.WriteLine("Nearby:" );
                     amount_b_is_willing_to_give = 0.0f;
                 }
             }
+
+            if (amount_b_is_willing_to_give > b_gives_amount)
+            {
+                amount_b_is_willing_to_give = b_gives_amount;
+            }
         }
 
 
@@ -1002,6 +1052,12 @@ Console.WriteLine("Nearby:" );
         // A prepares a list of offers that B can choose.
         foreach (int good in this.people[a].owns.Keys)
         {
+
+            // locations only want cash
+            if (this.people[b].is_location && good != (int)Content.Items.Cash)
+            {
+                continue;
+            }
      
             // limit by how much A has on hand.
             float tradeable_volume = this.people[a].owns[good];
@@ -1642,16 +1698,17 @@ Console.WriteLine("Nearby:" );
 
         int b = this.select_person();
 
-      
-        int b_gives = this.people[this.player].greatest_need();
-        
-        if ( b_gives != -1)
+        if (b != -1)
         {
-            float b_gives_amount = this.people[this.player].greatest_need_quantity();
-            this.trade(this.player,b, b_gives, b_gives_amount);
+            int b_gives = this.people[this.player].greatest_need();
+            
+            if ( b_gives != -1)
+            {
+                float b_gives_amount = this.people[this.player].greatest_need_quantity();
+                this.trade(this.player,b, b_gives, b_gives_amount);
+            }
+
         }
-
-
 
     }
 
